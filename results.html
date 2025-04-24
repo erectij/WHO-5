@@ -6,13 +6,26 @@
 <title>WHO-5 Live Results</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script>
+<style>
+  .error { color: red; font-weight: bold; }
+  #debug { 
+    margin-top: 20px;
+    padding: 10px; 
+    background: #f8f8f8; 
+    border: 1px solid #ddd;
+    white-space: pre-wrap;
+    font-family: monospace;
+    display: none;
+  }
+</style>
 </head>
-
 <body class="container">
 <h1>Live WHO-5 Scores</h1>
 <h2 id="mean">No data yet</h2>
 <canvas id="hist" height="280"></canvas>
 <p>Total respondents: <span id="n">0</span></p>
+<div id="debug"></div>
+<button id="toggleDebug" type="button">Show Debug Info</button>
 
 <!-- --- SCRIPT AFTER THE DOM --- -->
 <script type="module">
@@ -22,10 +35,34 @@ if (prompt('Password?') !== 'mammabird') {
   throw '';
 }
 
+const debugEl = document.getElementById('debug');
+const toggleDebugBtn = document.getElementById('toggleDebug');
+
+// Debug helper function
+function logDebug(message, data) {
+  console.log(message, data);
+  const timestamp = new Date().toLocaleTimeString();
+  debugEl.innerHTML += `[${timestamp}] ${message}\n`;
+  if (data) {
+    debugEl.innerHTML += JSON.stringify(data, null, 2) + '\n\n';
+  } else {
+    debugEl.innerHTML += '\n';
+  }
+}
+
+toggleDebugBtn.addEventListener('click', () => {
+  if (debugEl.style.display === 'none' || !debugEl.style.display) {
+    debugEl.style.display = 'block';
+    toggleDebugBtn.textContent = 'Hide Debug Info';
+  } else {
+    debugEl.style.display = 'none';
+    toggleDebugBtn.textContent = 'Show Debug Info';
+  }
+});
+
 /* Firebase */
 import { initializeApp }   from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
-import { getDatabase, onValue, ref } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-database.js";
-
+import { getDatabase, onValue, ref, get } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-database.js";
 const cfg = {
   apiKey: "AIzaSyC6aUW6S7rlVbedhsRIxuoS9MIhEbgIVXo",
   authDomain: "who-5-test.firebaseapp.com",
@@ -35,38 +72,115 @@ const cfg = {
   messagingSenderId: "934691632402",
   appId: "1:934691632402:web:925f243dffa4b97cf86fcb"
 };
-const app = initializeApp(cfg);
-const db  = getDatabase(app);
 
-/* Chart setup (DOM now exists) */
-const ctx     = document.getElementById('hist').getContext('2d');
-const labels  = [...Array(10)].map((_, i) => `${i*10}-${i*10+9}`);
-const counts  = new Array(10).fill(0);
-const chart   = new Chart(ctx, {
-  type: 'bar',
-  data: { labels, datasets: [{ data: counts }] },
-  options: { animation: false, scales: { y: { beginAtZero: true, stepSize: 1 } } }
-});
-const meanEl = document.getElementById('mean');
-const nEl    = document.getElementById('n');
+try {
+  logDebug('Initializing Firebase...');
+  const app = initializeApp(cfg);
+  const db  = getDatabase(app);
+  logDebug('Firebase initialized successfully');
+  
+  /* Chart setup (DOM now exists) */
+  const ctx     = document.getElementById('hist').getContext('2d');
+  const labels  = [...Array(10)].map((_, i) => `${i*10}-${i*10+9}`);
+  const counts  = new Array(10).fill(0);
+  const chart   = new Chart(ctx, {
+    type: 'bar',
+    data: { 
+      labels, 
+      datasets: [{ 
+        data: counts,
+        backgroundColor: 'rgba(54, 162, 235, 0.6)',
+        borderColor: 'rgba(54, 162, 235, 1)',
+        borderWidth: 1
+      }] 
+    },
+    options: { 
+      animation: false, 
+      scales: { y: { beginAtZero: true, stepSize: 1 } },
+      plugins: {
+        legend: {
+          display: false
+        }
+      }
+    }
+  });
+  const meanEl = document.getElementById('mean');
+  const nEl    = document.getElementById('n');
 
-/* Live listener */
-onValue(ref(db, 'scores'), snap => {
-  counts.fill(0);
-  const scores = [];
-  snap.forEach(c => scores.push(c.val()));
+  /* Check data exists first */
+  logDebug('Checking if scores data exists...');
+  get(ref(db, 'scores')).then(snapshot => {
+    if (snapshot.exists()) {
+      logDebug('Scores data exists:', snapshot.val());
+    } else {
+      logDebug('No scores data found in database');
+    }
+  }).catch(error => {
+    logDebug('Error checking scores data:', error);
+  });
 
-  scores.forEach(s => counts[Math.min(Math.floor(s / 10), 9)]++);
-  chart.update();
-
-  if (scores.length) {
-    const mean = Math.round(scores.reduce((a, b) => a + b) / scores.length);
-    meanEl.textContent = `Mean WHO-5: ${mean}`;
-  } else {
-    meanEl.textContent = 'No data yet';
-  }
-  nEl.textContent = scores.length;
-});
+  /* Live listener */
+  logDebug('Setting up real-time listener for scores...');
+  onValue(
+    ref(db, 'scores'), 
+    snap => {
+      logDebug('Data received from Firebase');
+      counts.fill(0);
+      const scores = [];
+      
+      if (!snap.exists()) {
+        logDebug('No data in snapshot');
+        return;
+      }
+      
+      snap.forEach(c => {
+        const value = c.val();
+        logDebug(`Found score:`, value);
+        scores.push(value);
+      });
+      
+      logDebug(`Processing ${scores.length} scores`);
+      
+      scores.forEach(s => {
+        // Make sure s is a number
+        const score = Number(s);
+        if (!isNaN(score)) {
+          const index = Math.min(Math.floor(score / 10), 9);
+          counts[index]++;
+        } else {
+          logDebug(`Invalid score value: ${s}`);
+        }
+      });
+      
+      logDebug('Histogram data:', counts);
+      chart.update();
+      
+      if (scores.length) {
+        const sum = scores.reduce((a, b) => Number(a) + Number(b), 0);
+        const mean = Math.round(sum / scores.length);
+        logDebug(`Calculated mean: ${mean} from sum: ${sum} and count: ${scores.length}`);
+        meanEl.textContent = `Mean WHO-5: ${mean}`;
+      } else {
+        meanEl.textContent = 'No data yet';
+      }
+      
+      nEl.textContent = scores.length;
+    },
+    error => {
+      logDebug('Error in Firebase onValue listener:', error);
+      const errorDiv = document.createElement('div');
+      errorDiv.className = 'error';
+      errorDiv.textContent = `Error loading data: ${error.message}`;
+      document.body.appendChild(errorDiv);
+    }
+  );
+} catch (error) {
+  logDebug('Error setting up Firebase:', error);
+  const errorDiv = document.createElement('div');
+  errorDiv.className = 'error';
+  errorDiv.textContent = `Error setting up Firebase: ${error.message}`;
+  document.body.appendChild(errorDiv);
+}
 </script>
 </body>
 </html>
