@@ -5,78 +5,69 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>WHO-5</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
-<style>
-.score{font-size:1.4rem;font-weight:700}
-.choice-button.selected{outline:2px solid #000}
-</style>
-<!-- Chart.js not needed here -->
-<!-- Firebase SDK -->
+<style>.choice.selected{outline:2px solid #000}.score{font-size:1.3rem;font-weight:700}</style>
+
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
-import { getDatabase, push, ref } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-database.js";
+import { initializeApp }   from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
+import { getDatabase,push,ref } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-database.js";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyC6aUW6S7rlVbedhsRIxuoS9MIhEbgIVXo",
-  authDomain: "who-5-test.firebaseapp.com",
-  databaseURL: "https://who-5-test-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "who-5-test",
-  storageBucket: "who-5-test.firebasestorage.app",
-  messagingSenderId: "934691632402",
-  appId: "1:934691632402:web:925f243dffa4b97cf86fcb"
+const firebaseConfig={
+  apiKey:"AIzaSyC6aUW6S7rlVbedhsRIxuoS9MIhEbgIVXo",
+  authDomain:"who-5-test.firebaseapp.com",
+  databaseURL:"https://who-5-test-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId:"who-5-test",
+  storageBucket:"who-5-test.appspot.com",
+  messagingSenderId:"934691632402",
+  appId:"1:934691632402:web:925f243dffa4b97cf86fcb"
 };
-const app = initializeApp(firebaseConfig);
-const db  = getDatabase(app);
+const app=initializeApp(firebaseConfig);
+const db =getDatabase(app);
 
-window.selectChoice = (q,val,btn)=>{
-  document.getElementById(q).value=val;
-  btn.parentElement.querySelectorAll('.choice-button').forEach(b=>b.classList.remove('selected'));
-  btn.classList.add('selected');
+// UI helpers
+window.sel=(q,v,b)=>{
+  document.getElementById(q).value=v;
+  b.parentElement.querySelectorAll('.choice').forEach(x=>x.classList.remove('selected'));
+  b.classList.add('selected');
 };
-
-window.calculateScore=(e)=>{
- e.preventDefault();
- const vals=[...'12345'].map(i=>document.getElementById('q'+i).value);
- if(vals.some(v=>v==='')){alert('Please answer all five items');return;}
- const score = vals.reduce((s,v)=>s+Number(v),0)*4;
- document.getElementById('resultTop').textContent =
- document.getElementById('resultBottom').textContent = `Your WHO-5 score: ${score}`;
- push(ref(db,'scores'),score);          // store in Firebase
+window.clearAll=()=>{
+ document.querySelectorAll('.q').forEach(i=>i.value='');
+ document.querySelectorAll('.choice').forEach(b=>b.classList.remove('selected'));
+ ["top","bot"].forEach(id=>document.getElementById(id).textContent='');
 };
-
-window.clearScore=()=>{
- document.querySelectorAll('.question-input').forEach(i=>i.value='');
- document.querySelectorAll('.choice-button').forEach(b=>b.classList.remove('selected'));
- document.getElementById('resultTop').textContent=document.getElementById('resultBottom').textContent='';
+window.submit=(e)=>{
+  e.preventDefault();
+  const vals=[1,2,3,4,5].map(i=>document.getElementById('q'+i).value);
+  if(vals.some(v=>v==='')){alert('Answer all 5');return;}
+  const score=vals.reduce((s,v)=>s+Number(v),0)*4;
+  ["top","bot"].forEach(id=>document.getElementById(id).textContent=`Your WHO-5: ${score}`);
+  push(ref(db,'scores'),score);
 };
 </script>
 </head>
 <body class="container">
-<header><h1>WHO-5 Well-Being Index</h1></header>
 
-<nav><button onclick="calculateScore(event)">Submit</button><button onclick="clearScore()">Clear</button><p id="resultTop" class="score"></p></nav>
+<h1>WHO-5 Well-Being Index</h1>
+<form onsubmit="submit(event)">
+<nav>
+  <button type="submit">Submit</button>
+  <button type="button" onclick="clearAll()">Clear</button>
+  <span id="top" class="score"></span>
+</nav>
 
-<p>Over the last two weeks&hellip;</p>
-
-<!-- Five question blocks -->
 <script>
-const labels=[
- 'I have felt cheerful and in good spirits',
- 'I have felt calm and relaxed',
- 'I have felt active and vigorous',
- 'I woke up feeling fresh and rested',
- 'My daily life has been filled with things that interest me'
-];
-labels.forEach((txt,i)=>{
- document.write(`
-  <section>
-    <h3>${txt}</h3>
-    <input type="hidden" id="q${i+1}" class="question-input">
-    ${[5,4,3,2,1,0].map(v=>`<button type="button" class="choice-button" onclick="selectChoice('q${i+1}',${v},this)">${v===5?'All of the time':v===0?'At no time':({4:'Most',3:'More than half',2:'Less than half',1:'Some'}[v]+' of the time')}</button>`).join('')}
-  </section>
- `);
+const txt=[
+'I have felt cheerful and in good spirits',
+'I have felt calm and relaxed',
+'I have felt active and vigorous',
+'I woke up feeling fresh and rested',
+'My daily life has been filled with things that interest me'];
+txt.forEach((t,i)=>{
+ document.write(`<h3>${t}</h3><input type="hidden" id="q${i+1}" class="q">
+   ${[5,4,3,2,1,0].map(v=>`<button type="button" class="choice" onclick="sel('q${i+1}',${v},this)">${v===5?'All of the time':v===0?'At no time':v===4?'Most of the time':v===3?'More than half':v===2?'Less than half':'Some of the time'}</button>`).join(' ')}`);
 });
 </script>
 
-<p id="resultBottom" class="score"></p>
+<p id="bot" class="score"></p>
+</form>
 </body>
 </html>
