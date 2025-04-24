@@ -20,6 +20,9 @@ input[type=radio]:checked + label.choice{
 .score{font-size:1.25rem;font-weight:700}
 fieldset{border:none;margin:0 0 1.2rem;padding:0}
 legend{font-weight:600}
+.error{color:red;font-weight:bold;margin-top:1rem}
+.success{color:green;font-weight:bold;margin-top:1rem}
+#status{margin-top:1rem}
 </style>
 </head>
 <body class="container">
@@ -33,6 +36,7 @@ legend{font-weight:600}
 <!-- Questions will be inserted here by JavaScript -->
 <div id="questions-container"></div>
 <p id="bot" class="score"></p>
+<div id="status"></div>
 </form>
 
 <!-- Firebase + logic -->
@@ -49,83 +53,125 @@ const firebaseConfig={
   messagingSenderId:"934691632402",
   appId:"1:934691632402:web:925f243dffa4b97cf86fcb"
 };
-const app = initializeApp(firebaseConfig);
-const db  = getDatabase(app);
 
-/* --- helpers --- */
-function clearForm(){
-  document.getElementById('form').reset();
-  document.getElementById('top').textContent = '';
-  document.getElementById('bot').textContent = '';
+// Display status messages
+function showStatus(message, isError = false) {
+  const statusEl = document.getElementById('status');
+  statusEl.innerHTML = '';
+  const messageEl = document.createElement('p');
+  messageEl.textContent = message;
+  messageEl.className = isError ? 'error' : 'success';
+  statusEl.appendChild(messageEl);
 }
 
-function submitForm(e){
-  e.preventDefault();
-  const values=[1,2,3,4,5].map(i=>{
-    const sel=document.querySelector(`input[name=q${i}]:checked`);
-    return sel ? Number(sel.value) : null;
-  });
-  if(values.includes(null)){alert('Please answer all five items');return;}
-  const score = values.reduce((a,b)=>a+b)*4;
-  document.getElementById('top').textContent = `Your WHO-5 score: ${score}`;
-  document.getElementById('bot').textContent = `Your WHO-5 score: ${score}`;
-  push(ref(db,'scores'),score);
-}
+try {
+  console.log("Initializing Firebase...");
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+  console.log("Firebase initialized successfully");
 
-// Questions and labels
-const questions = [
-  'I have felt cheerful and in good spirits',
-  'I have felt calm and relaxed',
-  'I have felt active and vigorous',
-  'I woke up feeling fresh and rested',
-  'My daily life has been filled with things that interest me'
-];
+  /* --- helpers --- */
+  function clearForm(){
+    document.getElementById('form').reset();
+    document.getElementById('top').textContent = '';
+    document.getElementById('bot').textContent = '';
+    document.getElementById('status').innerHTML = '';
+  }
 
-const labels = {
-  5: 'All of the time',
-  4: 'Most of the time',
-  3: 'More than half of the time',
-  2: 'Less than half of the time',
-  1: 'Some of the time',
-  0: 'At no time'
-};
-
-// Generate questions using proper DOM methods
-function generateQuestions() {
-  const container = document.getElementById('questions-container');
-  
-  questions.forEach((text, i) => {
-    const fieldset = document.createElement('fieldset');
-    const legend = document.createElement('legend');
-    legend.textContent = text;
-    fieldset.appendChild(legend);
-    
-    [5, 4, 3, 2, 1, 0].forEach(v => {
-      const input = document.createElement('input');
-      input.type = 'radio';
-      input.id = `q${i+1}_${v}`;
-      input.name = `q${i+1}`;
-      input.value = v;
-      
-      const label = document.createElement('label');
-      label.setAttribute('for', `q${i+1}_${v}`);
-      label.className = 'choice';
-      label.textContent = labels[v];
-      
-      fieldset.appendChild(input);
-      fieldset.appendChild(label);
+  function submitForm(e){
+    e.preventDefault();
+    const values=[1,2,3,4,5].map(i=>{
+      const sel=document.querySelector(`input[name=q${i}]:checked`);
+      return sel ? Number(sel.value) : null;
     });
     
-    container.appendChild(fieldset);
-  });
-}
+    console.log("Form values:", values);
+    
+    if(values.includes(null)){
+      alert('Please answer all five items');
+      return;
+    }
+    
+    const score = values.reduce((a,b)=>a+b)*4;
+    console.log("Calculated score:", score);
+    
+    document.getElementById('top').textContent = `Your WHO-5 score: ${score}`;
+    document.getElementById('bot').textContent = `Your WHO-5 score: ${score}`;
+    
+    // Add loading indicator
+    showStatus("Submitting score...");
+    
+    // Push to Firebase with error handling
+    push(ref(db,'scores'), score)
+      .then(() => {
+        console.log("Successfully submitted score to Firebase:", score);
+        showStatus("Your score has been successfully submitted!");
+      })
+      .catch((error) => {
+        console.error("Error submitting score to Firebase:", error);
+        showStatus("Error submitting score: " + error.message, true);
+      });
+  }
 
-// Set up event listeners
-document.addEventListener('DOMContentLoaded', function() {
-  generateQuestions();
-  document.getElementById('form').addEventListener('submit', submitForm);
-  document.getElementById('clearBtn').addEventListener('click', clearForm);
-});
+  // Questions and labels
+  const questions = [
+    'I have felt cheerful and in good spirits',
+    'I have felt calm and relaxed',
+    'I have felt active and vigorous',
+    'I woke up feeling fresh and rested',
+    'My daily life has been filled with things that interest me'
+  ];
+
+  const labels = {
+    5: 'All of the time',
+    4: 'Most of the time',
+    3: 'More than half of the time',
+    2: 'Less than half of the time',
+    1: 'Some of the time',
+    0: 'At no time'
+  };
+
+  // Generate questions using proper DOM methods
+  function generateQuestions() {
+    const container = document.getElementById('questions-container');
+    
+    questions.forEach((text, i) => {
+      const fieldset = document.createElement('fieldset');
+      const legend = document.createElement('legend');
+      legend.textContent = text;
+      fieldset.appendChild(legend);
+      
+      [5, 4, 3, 2, 1, 0].forEach(v => {
+        const input = document.createElement('input');
+        input.type = 'radio';
+        input.id = `q${i+1}_${v}`;
+        input.name = `q${i+1}`;
+        input.value = v;
+        
+        const label = document.createElement('label');
+        label.setAttribute('for', `q${i+1}_${v}`);
+        label.className = 'choice';
+        label.textContent = labels[v];
+        
+        fieldset.appendChild(input);
+        fieldset.appendChild(label);
+      });
+      
+      container.appendChild(fieldset);
+    });
+  }
+
+  // Set up event listeners
+  document.addEventListener('DOMContentLoaded', function() {
+    console.log("DOM loaded, generating questions");
+    generateQuestions();
+    document.getElementById('form').addEventListener('submit', submitForm);
+    document.getElementById('clearBtn').addEventListener('click', clearForm);
+  });
+} catch (error) {
+  console.error("Error initializing the application:", error);
+  showStatus("Error initializing the application: " + error.message, true);
+}
 </script>
 </body>
 </html>
