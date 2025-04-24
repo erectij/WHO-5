@@ -6,59 +6,67 @@
 <title>WHO-5 Live Results</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script>
-
-<script type="module">
-/* simple password gate */
-if(prompt('Password?')!=='mammabird'){document.body.innerHTML='<h2>Access denied</h2>';throw '';}
-
-import { initializeApp }   from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
-import { getDatabase,onValue,ref } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-database.js";
-
-const cfg={
-  apiKey:"AIzaSyC6aUW6S7rlVbedhsRIxuoS9MIhEbgIVXo",
-  authDomain:"who-5-test.firebaseapp.com",
-  databaseURL:"https://who-5-test-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId:"who-5-test",
-  storageBucket:"who-5-test.appspot.com",
-  messagingSenderId:"934691632402",
-  appId:"1:934691632402:web:925f243dffa4b97cf86fcb"
-};
-const app=initializeApp(cfg);
-const db =getDatabase(app);
-
-/* setup chart */
-const ctx=document.getElementById('hist').getContext('2d');
-const labels=[...Array(10)].map((_,i)=>`${i*10}-${i*10+9}`);
-const counts=new Array(10).fill(0);
-const chart=new Chart(ctx,{type:'bar',data:{labels,datasets:[{data:counts}]},
-  options:{animation:false,scales:{y:{beginAtZero:true,stepSize:1}}}});
-
-const meanEl=document.getElementById('mean'), nEl=document.getElementById('n');
-
-onValue(ref(db,'scores'),snap=>{
-  const scores=[]; snap.forEach(c=>scores.push(c.val()));
-  /* reset bins */
-  counts.fill(0);
-  scores.forEach(s=>{
-    const idx=Math.min(Math.floor(s/10),9);
-    counts[idx]++
-  });
-  chart.update();
-  if(scores.length){
-    const mean=Math.round(scores.reduce((a,b)=>a+b)/scores.length);
-    meanEl.textContent=`Mean WHO-5: ${mean}`;
-  }else{
-    meanEl.textContent='No data yet';
-  }
-  nEl.textContent=scores.length;
-});
-</script>
-
 </head>
+
 <body class="container">
 <h1>Live WHO-5 Scores</h1>
 <h2 id="mean">No data yet</h2>
 <canvas id="hist" height="280"></canvas>
 <p>Total respondents: <span id="n">0</span></p>
+
+<!-- --- SCRIPT AFTER THE DOM --- -->
+<script type="module">
+/* simple password gate */
+if (prompt('Password?') !== 'mammabird') {
+  document.body.innerHTML = '<h2>Access denied</h2>';
+  throw '';
+}
+
+/* Firebase */
+import { initializeApp }   from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
+import { getDatabase, onValue, ref } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-database.js";
+
+const cfg = {
+  apiKey: "AIzaSyC6aUW6S7rlVbedhsRIxuoS9MIhEbgIVXo",
+  authDomain: "who-5-test.firebaseapp.com",
+  databaseURL: "https://who-5-test-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "who-5-test",
+  storageBucket: "who-5-test.appspot.com",
+  messagingSenderId: "934691632402",
+  appId: "1:934691632402:web:925f243dffa4b97cf86fcb"
+};
+const app = initializeApp(cfg);
+const db  = getDatabase(app);
+
+/* Chart setup (DOM now exists) */
+const ctx     = document.getElementById('hist').getContext('2d');
+const labels  = [...Array(10)].map((_, i) => `${i*10}-${i*10+9}`);
+const counts  = new Array(10).fill(0);
+const chart   = new Chart(ctx, {
+  type: 'bar',
+  data: { labels, datasets: [{ data: counts }] },
+  options: { animation: false, scales: { y: { beginAtZero: true, stepSize: 1 } } }
+});
+const meanEl = document.getElementById('mean');
+const nEl    = document.getElementById('n');
+
+/* Live listener */
+onValue(ref(db, 'scores'), snap => {
+  counts.fill(0);
+  const scores = [];
+  snap.forEach(c => scores.push(c.val()));
+
+  scores.forEach(s => counts[Math.min(Math.floor(s / 10), 9)]++);
+  chart.update();
+
+  if (scores.length) {
+    const mean = Math.round(scores.reduce((a, b) => a + b) / scores.length);
+    meanEl.textContent = `Mean WHO-5: ${mean}`;
+  } else {
+    meanEl.textContent = 'No data yet';
+  }
+  nEl.textContent = scores.length;
+});
+</script>
 </body>
 </html>
