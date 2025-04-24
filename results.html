@@ -11,29 +11,37 @@
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         max-width: 1000px;
         margin: 0 auto;
-        padding: 20px;
+        padding: 10px;
+        background-color: #1a1f2c;
+        color: #ffffff;
     }
-    h1, h2 {
-        color: #003366;
+    h1 {
+        color: #0077c2;
+        font-size: 2.5rem;
+        margin-top: 10px;
+        margin-bottom: 15px;
+    }
+    h2 {
+        color: #0077c2;
+        font-size: 1.8rem;
     }
     .qr-container {
         text-align: center;
         margin: 20px 0;
     }
     .qr-image {
-        max-width: 200px;
-        border: 1px solid #ddd;
+        width: 260px;
+        height: 260px;
+        border: 2px solid #ffffff;
         border-radius: 8px;
+        background-color: #ffffff;
+        padding: 5px;
     }
     .dashboard-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 20px;
-    }
-    .action-buttons {
-        display: flex;
-        gap: 10px;
+        margin-bottom: 5px;
     }
     .btn-danger {
         background-color: #dc3545;
@@ -42,20 +50,23 @@
         padding: 8px 16px;
         border-radius: 4px;
         cursor: pointer;
+        font-size: 1.1rem;
     }
     .btn-danger:hover {
         background-color: #bd2130;
     }
     #mean {
-        font-size: 1.5rem;
+        font-size: 2rem;
         font-weight: bold;
         color: #0077c2;
+        margin: 10px 0;
     }
     #status {
         margin-top: 15px;
         padding: 10px;
         border-radius: 4px;
         display: none;
+        font-size: 1.2rem;
     }
     .error {
         background-color: #ffebee;
@@ -69,26 +80,26 @@
     }
     .stats-container {
         display: flex;
-        flex-wrap: wrap;
-        gap: 20px;
-        margin: 20px 0;
+        gap: 15px;
+        margin: 10px 0;
     }
     .stat-box {
         background-color: #f5f5f5;
-        padding: 15px;
+        padding: 10px;
         border-radius: 8px;
         flex: 1;
-        min-width: 150px;
+        min-width: 120px;
         text-align: center;
+        height: 100px;
     }
     .stat-value {
-        font-size: 2rem;
+        font-size: 2.5rem;
         font-weight: bold;
         color: #0077c2;
     }
     .stat-label {
-        font-size: 0.9rem;
-        color: #666;
+        font-size: 1.2rem;
+        color: #333;
     }
     #password-modal {
         display: none;
@@ -99,7 +110,6 @@
         height: 100%;
         background-color: rgba(0,0,0,0.7);
         z-index: 1000;
-        display: flex;
         justify-content: center;
         align-items: center;
     }
@@ -121,14 +131,46 @@
         font-size: 1.5rem;
         cursor: pointer;
     }
+    #confirmClearBtn, #cancelClearBtn {
+        padding: 8px 16px;
+        margin-top: 10px;
+        margin-right: 10px;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+    #confirmClearBtn {
+        background-color: #dc3545;
+        color: white;
+        border: none;
+    }
+    #cancelClearBtn {
+        background-color: #6c757d;
+        color: white;
+        border: none;
+    }
+    #passwordInput {
+        width: 100%;
+        padding: 8px;
+        margin: 10px 0;
+        border-radius: 4px;
+        border: 1px solid #ced4da;
+    }
+    .chart-container {
+        height: 300px;
+        margin-top: 10px;
+        background-color: rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        padding: 10px;
+    }
+    canvas {
+        max-height: 100%;
+    }
 </style>
 </head>
 <body>
 <div class="dashboard-header">
     <h1>Live WHO-5 Scores</h1>
-    <div class="action-buttons">
-        <button id="clearDataBtn" class="btn-danger">Clear All Data</button>
-    </div>
+    <button id="clearDataBtn" class="btn-danger">Clear All Data</button>
 </div>
 
 <div class="stats-container">
@@ -148,7 +190,9 @@
     <img src="QR.jpg" alt="QR Code" class="qr-image">
 </div>
 
-<canvas id="hist" height="280"></canvas>
+<div class="chart-container">
+    <canvas id="hist"></canvas>
+</div>
 
 <div id="status"></div>
 
@@ -168,12 +212,6 @@
 
 <!-- --- SCRIPT AFTER THE DOM --- -->
 <script type="module">
-/* simple password gate */
-if (prompt('Password?') !== 'mammabird') {
-  document.body.innerHTML = '<h2>Access denied</h2>';
-  throw '';
-}
-
 /* Firebase */
 import { initializeApp }   from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
 import { getDatabase, onValue, ref, remove, get } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-database.js";
@@ -247,6 +285,8 @@ try {
             }] 
         },
         options: { 
+            responsive: true,
+            maintainAspectRatio: false,
             animation: false, 
             scales: { 
                 y: { 
@@ -254,13 +294,41 @@ try {
                     stepSize: 1,
                     title: {
                         display: true,
-                        text: 'Number of Responses'
+                        text: 'Number of Responses',
+                        font: {
+                            size: 16,
+                            weight: 'bold'
+                        },
+                        color: '#ffffff'
+                    },
+                    ticks: {
+                        font: {
+                            size: 14
+                        },
+                        color: '#ffffff'
+                    },
+                    grid: {
+                        color: 'rgba(255, 255, 255, 0.1)'
                     }
                 },
                 x: {
                     title: {
                         display: true,
-                        text: 'Score Range'
+                        text: 'Score Range',
+                        font: {
+                            size: 16,
+                            weight: 'bold'
+                        },
+                        color: '#ffffff'
+                    },
+                    ticks: {
+                        font: {
+                            size: 14
+                        },
+                        color: '#ffffff'
+                    },
+                    grid: {
+                        color: 'rgba(255, 255, 255, 0.1)'
                     }
                 }
             },
@@ -272,7 +340,13 @@ try {
                     display: true,
                     text: 'WHO-5 Score Distribution',
                     font: {
-                        size: 16
+                        size: 18,
+                        weight: 'bold'
+                    },
+                    color: '#ffffff',
+                    padding: {
+                        top: 10,
+                        bottom: 10
                     }
                 }
             }
