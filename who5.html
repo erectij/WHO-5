@@ -3,18 +3,33 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>WHO-5</title>
+<title>WHO-5 Questionnaire</title>
+
+<!-- Minimal styling via PicoCSS -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+
 <style>
-.choice.selected{outline:2px solid #000}
-.score{font-size:1.3rem;font-weight:700}
-fieldset.qwrap{border:none;padding:0;margin:0 0 1rem}
+/* hide native radios, style labels as buttons */
+input[type=radio]{display:none}
+.choice{
+  display:inline-block;margin:0.25rem 0.15rem;padding:0.4rem 0.6rem;
+  border:1px solid #bbb;border-radius:4px;cursor:pointer;
+  user-select:none;transition:background 0.1s;
+}
+input[type=radio]:checked + label.choice{
+  background:#0077c2;color:#fff;font-weight:600;border-color:#0077c2;
+}
+.score{font-size:1.25rem;font-weight:700}
+fieldset{border:none;margin:0 0 1.2rem;padding:0}
+legend{font-weight:600}
 </style>
 
+<!-- Firebase + logic -->
 <script type="module">
-import { initializeApp }   from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
-import { getDatabase,push,ref } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-database.js";
+import { initializeApp }            from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
+import { getDatabase, push, ref }   from "https://www.gstatic.com/firebasejs/10.11.0/firebase-database.js";
 
+/* --- your Firebase project --- */
 const firebaseConfig={
   apiKey:"AIzaSyC6aUW6S7rlVbedhsRIxuoS9MIhEbgIVXo",
   authDomain:"who-5-test.firebaseapp.com",
@@ -24,59 +39,63 @@ const firebaseConfig={
   messagingSenderId:"934691632402",
   appId:"1:934691632402:web:925f243dffa4b97cf86fcb"
 };
-const app=initializeApp(firebaseConfig);
-const db = getDatabase(app);
+const app = initializeApp(firebaseConfig);
+const db  = getDatabase(app);
 
-/* ===== helper functions ===== */
-window.sel=(q,val,btn)=>{
-  document.getElementById(q).value=val;
-  btn.closest('.qwrap').querySelectorAll('.choice').forEach(b=>b.classList.remove('selected'));
-  btn.classList.add('selected');
-};
-window.clearAll=()=>{
-  document.querySelectorAll('.q').forEach(i=>i.value='');
-  document.querySelectorAll('.choice').forEach(b=>b.classList.remove('selected'));
+/* --- helpers --- */
+function clearForm(){
+  document.getElementById('form').reset();
   ['top','bot'].forEach(id=>document.getElementById(id).textContent='');
-};
-window.submit=(e)=>{
+}
+
+function submitForm(e){
   e.preventDefault();
-  const v=[1,2,3,4,5].map(i=>document.getElementById('q'+i).value);
-  if(v.some(x=>x==='')){alert('Please answer all five items');return;}
-  const score=v.reduce((s,n)=>s+Number(n),0)*4;
-  ['top','bot'].forEach(id=>document.getElementById(id).textContent=`Your WHO-5: ${score}`);
+  const values=[1,2,3,4,5].map(i=>{
+    const sel=document.querySelector(`input[name=q${i}]:checked`);
+    return sel ? Number(sel.value) : null;
+  });
+  if(values.includes(null)){alert('Please answer all five items');return;}
+  const score = values.reduce((a,b)=>a+b)*4;
+  ['top','bot'].forEach(id=>document.getElementById(id).textContent=`Your WHO-5 score: ${score}`);
   push(ref(db,'scores'),score);
-};
+}
+window.clearForm = clearForm;   // expose for button
+window.submitForm = submitForm; // expose for form
 </script>
 </head>
 
 <body class="container">
+
 <h1>WHO-5 Well-Being Index</h1>
 
-<form onsubmit="submit(event)">
+<form id="form" onsubmit="submitForm(event)">
+
 <nav>
   <button type="submit">Submit</button>
-  <button type="button" onclick="clearAll()">Clear</button>
+  <button type="button" onclick="clearForm()">Clear</button>
   <span id="top" class="score"></span>
 </nav>
 
+<!-- Questions -->
 <script>
-const items=[
+const qs=[
 'I have felt cheerful and in good spirits',
 'I have felt calm and relaxed',
 'I have felt active and vigorous',
 'I woke up feeling fresh and rested',
 'My daily life has been filled with things that interest me'];
-items.forEach((text,i)=>{
- document.write(`
-  <fieldset class="qwrap">
-   <legend><strong>${text}</strong></legend>
-   <input type="hidden" id="q${i+1}" class="q">
-   ${[5,4,3,2,1,0].map(v=>`<button type="button" class="choice" onclick="sel('q${i+1}',${v},this)">
-        ${v===5?'All of the time':v===0?'At no time':
-          v===4?'Most of the time':v===3?'More than half of the time':
-          v===2?'Less than half of the time':'Some of the time'}
-      </button>`).join(' ')}
-  </fieldset>`);
+
+const labels={5:'All of the time',4:'Most of the time',3:'More than half of the time',
+              2:'Less than half of the time',1:'Some of the time',0:'At no time'};
+
+qs.forEach((text,i)=>{
+  document.write(`<fieldset><legend>${text}</legend>`);
+  [5,4,3,2,1,0].forEach(v=>{
+    document.write(`
+     <input type="radio" id="q${i+1}_${v}" name="q${i+1}" value="${v}">
+     <label for="q${i+1}_${v}" class="choice">${labels[v]}</label>`);
+  });
+  document.write(`</fieldset>`);
 });
 </script>
 
