@@ -1,486 +1,314 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>WHO-5 Live Results</title>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script>
-<style>
-    body {
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-        max-width: 1000px;
-        margin: 0 auto;
-        padding: 10px;
-        background-color: #1a1f2c;
-        color: #ffffff;
-    }
-    h1 {
-        color: #0077c2;
-        font-size: 2.5rem;
-        margin-top: 10px;
-        margin-bottom: 15px;
-    }
-    h2 {
-        color: #0077c2;
-        font-size: 1.8rem;
-    }
-    .qr-container {
-        text-align: center;
-        margin: 20px 0;
-    }
-    .qr-image {
-        width: 260px;
-        height: 260px;
-        border: 2px solid #ffffff;
-        border-radius: 8px;
-        background-color: #ffffff;
-        padding: 5px;
-    }
-    .dashboard-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 5px;
-    }
-    .btn-danger {
-        background-color: #dc3545;
-        color: white;
-        border: none;
-        padding: 8px 16px;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 1.1rem;
-    }
-    .btn-danger:hover {
-        background-color: #bd2130;
-    }
-    #mean {
-        font-size: 2rem;
-        font-weight: bold;
-        color: #0077c2;
-        margin: 10px 0;
-    }
-    #status {
-        margin-top: 15px;
-        padding: 10px;
-        border-radius: 4px;
-        display: none;
-        font-size: 1.2rem;
-    }
-    .error {
-        background-color: #ffebee;
-        color: #c62828;
-        border: 1px solid #ef9a9a;
-    }
-    .success {
-        background-color: #e8f5e9;
-        color: #2e7d32;
-        border: 1px solid #a5d6a7;
-    }
-    .stats-container {
-        display: flex;
-        gap: 15px;
-        margin: 10px 0;
-    }
-    .stat-box {
-        background-color: #f5f5f5;
-        padding: 10px;
-        border-radius: 8px;
-        flex: 1;
-        min-width: 120px;
-        text-align: center;
-        height: 100px;
-    }
-    .stat-value {
-        font-size: 2.5rem;
-        font-weight: bold;
-        color: #0077c2;
-    }
-    .stat-label {
-        font-size: 1.2rem;
-        color: #333;
-    }
-    #password-modal {
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(0,0,0,0.7);
-        z-index: 1000;
-        justify-content: center;
-        align-items: center;
-    }
-    .modal-content {
-        background-color: white;
-        padding: 20px;
-        border-radius: 8px;
-        max-width: 400px;
-        width: 100%;
-    }
-    .modal-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-    .close-btn {
-        background: none;
-        border: none;
-        font-size: 1.5rem;
-        cursor: pointer;
-    }
-    #confirmClearBtn, #cancelClearBtn {
-        padding: 8px 16px;
-        margin-top: 10px;
-        margin-right: 10px;
-        border-radius: 4px;
-        cursor: pointer;
-    }
-    #confirmClearBtn {
-        background-color: #dc3545;
-        color: white;
-        border: none;
-    }
-    #cancelClearBtn {
-        background-color: #6c757d;
-        color: white;
-        border: none;
-    }
-    #passwordInput {
-        width: 100%;
-        padding: 8px;
-        margin: 10px 0;
-        border-radius: 4px;
-        border: 1px solid #ced4da;
-    }
-    .chart-container {
-        height: 300px;
-        margin-top: 10px;
-        background-color: rgba(255, 255, 255, 0.1);
-        border-radius: 8px;
-        padding: 10px;
-    }
-    canvas {
-        max-height: 100%;
-    }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WHO-5 Well-Being Index</title>
+    <style>
+        body {
+            font-size: 16px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            padding-top: 70px; /* Space for fixed top bar */
+            max-width: 800px;
+            margin: 0 auto;
+            padding-left: 15px;
+            padding-right: 15px;
+        }
+        .top-buttons {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            background-color: #f8f8f8;
+            padding: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            z-index: 1000;
+            display: flex;
+            justify-content: center;
+        }
+        .top-buttons-inner {
+            max-width: 800px;
+            width: 100%;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .top-buttons button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            background-color: #0077c2;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .top-buttons button:hover {
+            background-color: #005fa3;
+        }
+        .score {
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-left: 15px;
+        }
+        .question-group {
+            margin-bottom: 25px;
+        }
+        .question-group > label {
+            font-size: 1.125em;
+            display: block;
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+        .button-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .choice-button {
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            cursor: pointer;
+            text-align: left;
+            font-size: 1em;
+            transition: all 0.2s ease;
+        }
+        .choice-button[data-value="0"] { background-color: #E0F9F9; }
+        .choice-button[data-value="1"] { background-color: #D0F4F4; }
+        .choice-button[data-value="2"] { background-color: #A1E9E9; }
+        .choice-button[data-value="3"] { background-color: #71DEDE; }
+        .choice-button[data-value="4"] { background-color: #42D3D3; }
+        .choice-button[data-value="5"] { background-color: #12C8C8; }
+        .choice-button.selected {
+            background-color: #0077c2 !important;
+            color: white;
+            font-weight: bold;
+            box-shadow: 0 0 5px rgba(0,0,0,0.3);
+        }
+        .submit-buttons {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+        }
+        .submit-buttons button, .submit-buttons input[type="submit"] {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            background-color: #0077c2;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .status {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .error {
+            background-color: #ffebee;
+            color: #c62828;
+            border: 1px solid #ef9a9a;
+        }
+        .success {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+            border: 1px solid #a5d6a7;
+        }
+        h1 {
+            color: #003366;
+            margin-bottom: 25px;
+        }
+    </style>
 </head>
 <body>
-<div class="dashboard-header">
-    <h1>Live WHO-5 Scores</h1>
-    <button id="clearDataBtn" class="btn-danger">Clear All Data</button>
-</div>
-
-<div class="stats-container">
-    <div class="stat-box">
-        <div id="n" class="stat-value">0</div>
-        <div class="stat-label">Total Responses</div>
-    </div>
-    <div class="stat-box">
-        <div id="mean-value" class="stat-value">-</div>
-        <div class="stat-label">Mean Score</div>
-    </div>
-</div>
-
-<h2 id="mean">No data yet</h2>
-
-<div class="qr-container">
-    <img src="QR.jpg" alt="QR Code" class="qr-image">
-</div>
-
-<div class="chart-container">
-    <canvas id="hist"></canvas>
-</div>
-
-<div id="status"></div>
-
-<!-- Password confirmation modal -->
-<div id="password-modal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3>Confirm Action</h3>
-            <button class="close-btn" id="closeModal">&times;</button>
+    <div class="top-buttons">
+        <div class="top-buttons-inner">
+            <button onclick="submitForm(event)">Calculate Score</button>
+            <button onclick="clearForm()">Clear Form</button>
+            <p id="resultTop" class="score"></p>
         </div>
-        <p>Please enter the password to clear all data:</p>
-        <input type="password" id="passwordInput" placeholder="Password">
-        <button id="confirmClearBtn">Confirm Clear</button>
-        <button id="cancelClearBtn">Cancel</button>
     </div>
-</div>
 
-<!-- --- SCRIPT AFTER THE DOM --- -->
-<script type="module">
-/* Firebase */
-import { initializeApp }   from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
-import { getDatabase, onValue, ref, remove, get } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-database.js";
-
-const cfg = {
-  apiKey: "AIzaSyC6aUW6S7rlVbedhsRIxuoS9MIhEbgIVXo",
-  authDomain: "who-5-test.firebaseapp.com",
-  databaseURL: "https://who-5-test-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "who-5-test",
-  storageBucket: "who-5-test.appspot.com",
-  messagingSenderId: "934691632402",
-  appId: "1:934691632402:web:925f243dffa4b97cf86fcb"
-};
-
-// Initialize Firebase
-try {
-    const app = initializeApp(cfg);
-    const db = getDatabase(app);
-    console.log("Firebase initialized successfully");
-
-    // UI elements
-    const meanEl = document.getElementById('mean');
-    const meanValueEl = document.getElementById('mean-value');
-    const nEl = document.getElementById('n');
-    const statusEl = document.getElementById('status');
-    const clearDataBtn = document.getElementById('clearDataBtn');
-    const passwordModal = document.getElementById('password-modal');
-    const closeModalBtn = document.getElementById('closeModal');
-    const confirmClearBtn = document.getElementById('confirmClearBtn');
-    const cancelClearBtn = document.getElementById('cancelClearBtn');
-    const passwordInput = document.getElementById('passwordInput');
-
-    // Function to show status messages
-    function showStatus(message, isError = false) {
-        statusEl.textContent = message;
-        statusEl.className = isError ? 'error' : 'success';
-        statusEl.style.display = 'block';
+    <h1>WHO-5 Well-Being Index</h1>
+    <form id="form">
+        <p>Over the last two weeks, how often have you felt the following:</p>
         
-        // Hide the message after 5 seconds
-        setTimeout(() => {
-            statusEl.style.display = 'none';
-        }, 5000);
-    }
+        <div class="question-group">
+            <label>I have felt cheerful and in good spirits</label>
+            <input type="hidden" id="q1" class="question-input" name="q1">
+            <div class="button-group">
+                <button type="button" class="choice-button" data-value="5" onclick="selectChoice('q1', 5, this)">All of the time</button>
+                <button type="button" class="choice-button" data-value="4" onclick="selectChoice('q1', 4, this)">Most of the time</button>
+                <button type="button" class="choice-button" data-value="3" onclick="selectChoice('q1', 3, this)">More than half of the time</button>
+                <button type="button" class="choice-button" data-value="2" onclick="selectChoice('q1', 2, this)">Less than half of the time</button>
+                <button type="button" class="choice-button" data-value="1" onclick="selectChoice('q1', 1, this)">Some of the time</button>
+                <button type="button" class="choice-button" data-value="0" onclick="selectChoice('q1', 0, this)">At no time</button>
+            </div>
+        </div>
 
-    // Chart setup (DOM now exists)
-    const ctx = document.getElementById('hist').getContext('2d');
-    const labels = [...Array(10)].map((_, i) => `${i*10}-${i*10+9}`);
-    const counts = new Array(10).fill(0);
-    
-    // Create chart with WHO-5 button colors as gradient
-    const chart = new Chart(ctx, {
-        type: 'bar',
-        data: { 
-            labels, 
-            datasets: [{ 
-                data: counts,
-                backgroundColor: [
-                    '#E0F9F9', // At no time
-                    '#D0F4F4', // Some of the time
-                    '#A1E9E9', // Less than half of the time
-                    '#71DEDE', // More than half of the time
-                    '#42D3D3', // Most of the time
-                    '#12C8C8', // All of the time
-                    '#12C8C8', 
-                    '#12C8C8',
-                    '#12C8C8',
-                    '#12C8C8'
-                ],
-                borderColor: '#0077c2',
-                borderWidth: 1
-            }] 
-        },
-        options: { 
-            responsive: true,
-            maintainAspectRatio: false,
-            animation: false, 
-            scales: { 
-                y: { 
-                    beginAtZero: true, 
-                    stepSize: 1,
-                    title: {
-                        display: true,
-                        text: 'Number of Responses',
-                        font: {
-                            size: 16,
-                            weight: 'bold'
-                        },
-                        color: '#ffffff'
-                    },
-                    ticks: {
-                        font: {
-                            size: 14
-                        },
-                        color: '#ffffff'
-                    },
-                    grid: {
-                        color: 'rgba(255, 255, 255, 0.1)'
-                    }
-                },
-                x: {
-                    title: {
-                        display: true,
-                        text: 'Score Range',
-                        font: {
-                            size: 16,
-                            weight: 'bold'
-                        },
-                        color: '#ffffff'
-                    },
-                    ticks: {
-                        font: {
-                            size: 14
-                        },
-                        color: '#ffffff'
-                    },
-                    grid: {
-                        color: 'rgba(255, 255, 255, 0.1)'
-                    }
+        <div class="question-group">
+            <label>I have felt calm and relaxed</label>
+            <input type="hidden" id="q2" class="question-input" name="q2">
+            <div class="button-group">
+                <button type="button" class="choice-button" data-value="5" onclick="selectChoice('q2', 5, this)">All of the time</button>
+                <button type="button" class="choice-button" data-value="4" onclick="selectChoice('q2', 4, this)">Most of the time</button>
+                <button type="button" class="choice-button" data-value="3" onclick="selectChoice('q2', 3, this)">More than half of the time</button>
+                <button type="button" class="choice-button" data-value="2" onclick="selectChoice('q2', 2, this)">Less than half of the time</button>
+                <button type="button" class="choice-button" data-value="1" onclick="selectChoice('q2', 1, this)">Some of the time</button>
+                <button type="button" class="choice-button" data-value="0" onclick="selectChoice('q2', 0, this)">At no time</button>
+            </div>
+        </div>
+
+        <div class="question-group">
+            <label>I have felt active and vigorous</label>
+            <input type="hidden" id="q3" class="question-input" name="q3">
+            <div class="button-group">
+                <button type="button" class="choice-button" data-value="5" onclick="selectChoice('q3', 5, this)">All of the time</button>
+                <button type="button" class="choice-button" data-value="4" onclick="selectChoice('q3', 4, this)">Most of the time</button>
+                <button type="button" class="choice-button" data-value="3" onclick="selectChoice('q3', 3, this)">More than half of the time</button>
+                <button type="button" class="choice-button" data-value="2" onclick="selectChoice('q3', 2, this)">Less than half of the time</button>
+                <button type="button" class="choice-button" data-value="1" onclick="selectChoice('q3', 1, this)">Some of the time</button>
+                <button type="button" class="choice-button" data-value="0" onclick="selectChoice('q3', 0, this)">At no time</button>
+            </div>
+        </div>
+
+        <div class="question-group">
+            <label>I woke up feeling fresh and rested</label>
+            <input type="hidden" id="q4" class="question-input" name="q4">
+            <div class="button-group">
+                <button type="button" class="choice-button" data-value="5" onclick="selectChoice('q4', 5, this)">All of the time</button>
+                <button type="button" class="choice-button" data-value="4" onclick="selectChoice('q4', 4, this)">Most of the time</button>
+                <button type="button" class="choice-button" data-value="3" onclick="selectChoice('q4', 3, this)">More than half of the time</button>
+                <button type="button" class="choice-button" data-value="2" onclick="selectChoice('q4', 2, this)">Less than half of the time</button>
+                <button type="button" class="choice-button" data-value="1" onclick="selectChoice('q4', 1, this)">Some of the time</button>
+                <button type="button" class="choice-button" data-value="0" onclick="selectChoice('q4', 0, this)">At no time</button>
+            </div>
+        </div>
+
+        <div class="question-group">
+            <label>My daily life has been filled with things that interest me</label>
+            <input type="hidden" id="q5" class="question-input" name="q5">
+            <div class="button-group">
+                <button type="button" class="choice-button" data-value="5" onclick="selectChoice('q5', 5, this)">All of the time</button>
+                <button type="button" class="choice-button" data-value="4" onclick="selectChoice('q5', 4, this)">Most of the time</button>
+                <button type="button" class="choice-button" data-value="3" onclick="selectChoice('q5', 3, this)">More than half of the time</button>
+                <button type="button" class="choice-button" data-value="2" onclick="selectChoice('q5', 2, this)">Less than half of the time</button>
+                <button type="button" class="choice-button" data-value="1" onclick="selectChoice('q5', 1, this)">Some of the time</button>
+                <button type="button" class="choice-button" data-value="0" onclick="selectChoice('q5', 0, this)">At no time</button>
+            </div>
+        </div>
+
+        <div class="submit-buttons">
+            <input type="submit" value="Submit Score" onclick="submitForm(event)">
+            <button type="button" onclick="clearForm()">Clear Form</button>
+        </div>
+    </form>
+    <p id="resultBottom" class="score"></p>
+    <div id="status"></div>
+
+    <!-- Firebase + logic -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
+        import { getDatabase, push, ref } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-database.js";
+        
+        /* --- your Firebase project --- */
+        const firebaseConfig = {
+            apiKey: "AIzaSyC6aUW6S7rlVbedhsRIxuoS9MIhEbgIVXo",
+            authDomain: "who-5-test.firebaseapp.com",
+            databaseURL: "https://who-5-test-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "who-5-test",
+            storageBucket: "who-5-test.appspot.com",
+            messagingSenderId: "934691632402",
+            appId: "1:934691632402:web:925f243dffa4b97cf86fcb"
+        };
+
+        // Initialize Firebase
+        try {
+            const app = initializeApp(firebaseConfig);
+            const db = getDatabase(app);
+            console.log("Firebase initialized successfully");
+
+            // Expose functions to window so they're available to inline onclick handlers
+            window.selectChoice = function(questionId, value, button) {
+                document.getElementById(questionId).value = value;
+                let buttons = button.parentElement.getElementsByClassName('choice-button');
+                for (let btn of buttons) {
+                    btn.classList.remove('selected');
                 }
-            },
-            plugins: {
-                legend: {
-                    display: false
-                },
-                title: {
-                    display: true,
-                    text: 'WHO-5 Score Distribution',
-                    font: {
-                        size: 18,
-                        weight: 'bold'
-                    },
-                    color: '#ffffff',
-                    padding: {
-                        top: 10,
-                        bottom: 10
-                    }
+                button.classList.add('selected');
+            };
+
+            window.clearForm = function() {
+                document.getElementById('form').reset();
+                let inputs = document.getElementsByClassName('question-input');
+                for (let input of inputs) {
+                    input.value = '';
                 }
-            }
-        }
-    });
+                let buttons = document.getElementsByClassName('choice-button');
+                for (let btn of buttons) {
+                    btn.classList.remove('selected');
+                }
+                document.getElementById('resultTop').textContent = '';
+                document.getElementById('resultBottom').textContent = '';
+                document.getElementById('status').innerHTML = '';
+            };
 
-    // Function to clear all data
-    function clearAllData() {
-        passwordModal.style.display = 'flex';
-    }
-
-    // Confirm clearing data with password
-    function confirmClearData() {
-        if (passwordInput.value === 'mammabird') {
-            passwordModal.style.display = 'none';
-            
-            // Show loading status
-            showStatus("Clearing data...");
-            
-            // Clear firebase data
-            remove(ref(db, 'scores'))
-                .then(() => {
-                    console.log("Successfully cleared all data");
-                    showStatus("All data has been successfully cleared!");
-                    
-                    // Reset chart
-                    counts.fill(0);
-                    chart.update();
-                    
-                    // Reset stats
-                    meanEl.textContent = 'No data yet';
-                    meanValueEl.textContent = '-';
-                    nEl.textContent = '0';
-                })
-                .catch((error) => {
-                    console.error("Error clearing data:", error);
-                    showStatus("Error clearing data: " + error.message, true);
+            window.submitForm = function(event) {
+                event.preventDefault();
+                
+                // Get values from all questions
+                const values = [1, 2, 3, 4, 5].map(i => {
+                    const val = document.getElementById(`q${i}`).value;
+                    return val ? Number(val) : null;
                 });
-        } else {
-            showStatus("Incorrect password", true);
-        }
-        passwordInput.value = '';
-    }
-
-    // Event listeners for modal
-    clearDataBtn.addEventListener('click', clearAllData);
-    closeModalBtn.addEventListener('click', () => passwordModal.style.display = 'none');
-    cancelClearBtn.addEventListener('click', () => passwordModal.style.display = 'none');
-    confirmClearBtn.addEventListener('click', confirmClearData);
-    
-    // Close modal if clicked outside
-    window.addEventListener('click', event => {
-        if (event.target === passwordModal) {
-            passwordModal.style.display = 'none';
-        }
-    });
-
-    // Check data exists first
-    get(ref(db, 'scores')).then(snapshot => {
-        if (snapshot.exists()) {
-            console.log("Initial data check: Scores data exists");
-        } else {
-            console.log("Initial data check: No scores data found in database");
-            showStatus("No data in database yet");
-        }
-    }).catch(error => {
-        console.error("Error checking scores data:", error);
-        showStatus("Error loading data: " + error.message, true);
-    });
-
-    /* Live listener */
-    onValue(
-        ref(db, 'scores'), 
-        snapshot => {
-            console.log("Data received from Firebase");
-            counts.fill(0);
-            const scores = [];
-            
-            if (!snapshot.exists()) {
-                console.log("No data in snapshot");
-                meanEl.textContent = 'No data yet';
-                meanValueEl.textContent = '-';
-                nEl.textContent = '0';
-                chart.update();
-                return;
-            }
-            
-            snapshot.forEach(child => {
-                const value = child.val();
-                console.log(`Found score:`, value);
-                scores.push(value);
-            });
-            
-            console.log(`Processing ${scores.length} scores`);
-            
-            // Count scores for histogram
-            scores.forEach(s => {
-                // Make sure s is a number
-                const score = Number(s);
-                if (!isNaN(score)) {
-                    const index = Math.min(Math.floor(score / 10), 9);
-                    counts[index]++;
-                } else {
-                    console.log(`Invalid score value: ${s}`);
+                
+                console.log("Form values:", values);
+                
+                // Validate all questions are answered
+                if (values.includes(null)) {
+                    showStatus("Please answer all five questions", true);
+                    return;
                 }
-            });
-            
-            console.log('Histogram data:', counts);
-            chart.update();
-            
-            // Calculate and display mean
-            if (scores.length) {
-                const sum = scores.reduce((a, b) => Number(a) + Number(b), 0);
-                const mean = Math.round(sum / scores.length);
-                console.log(`Calculated mean: ${mean} from sum: ${sum} and count: ${scores.length}`);
-                meanEl.textContent = `Mean WHO-5: ${mean}`;
-                meanValueEl.textContent = mean;
-            } else {
-                meanEl.textContent = 'No data yet';
-                meanValueEl.textContent = '-';
+                
+                // Calculate score (sum × 4)
+                const score = values.reduce((a, b) => a + b, 0) * 4;
+                console.log("Calculated score:", score);
+                
+                // Display score
+                const scoreText = `Your WHO-5 score: ${score}`;
+                document.getElementById('resultTop').textContent = scoreText;
+                document.getElementById('resultBottom').textContent = scoreText;
+                
+                // Show submitting status
+                showStatus("Submitting score...", false);
+                
+                // Submit to Firebase
+                push(ref(db, 'scores'), score)
+                    .then(() => {
+                        console.log("Successfully submitted score to Firebase:", score);
+                        showStatus("Your score has been successfully submitted!", false);
+                    })
+                    .catch((error) => {
+                        console.error("Error submitting score to Firebase:", error);
+                        showStatus("Error submitting score: " + error.message, true);
+                    });
+            };
+
+            function showStatus(message, isError) {
+                const statusEl = document.getElementById('status');
+                statusEl.textContent = message;
+                statusEl.className = isError ? 'status error' : 'status success';
             }
-            
-            // Update total count
-            nEl.textContent = scores.length;
-        },
-        error => {
-            console.error("Error in Firebase onValue listener:", error);
-            showStatus("Error loading data: " + error.message, true);
+
+            // Make showStatus available to the window
+            window.showStatus = showStatus;
+
+        } catch (error) {
+            console.error("Error initializing Firebase:", error);
+            const statusEl = document.getElementById('status');
+            statusEl.textContent = "Error initializing application: " + error.message;
+            statusEl.className = 'status error';
         }
-    );
-} catch (error) {
-    console.error("Error setting up Firebase:", error);
-    showStatus("Error setting up Firebase: " + error.message, true);
-}
-</script>
+    </script>
 </body>
 </html>
