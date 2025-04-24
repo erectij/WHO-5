@@ -12,14 +12,14 @@ if(prompt('Password?')!=='mammabird'){document.body.innerHTML='<h2>Access denied
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
 import { getDatabase, onValue, ref } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-database.js";
 
-const cfg={
- apiKey:"YOUR-API-KEY",
- authDomain:"YOUR-PROJECT.firebaseapp.com",
- databaseURL:"https://YOUR-PROJECT.firebaseio.com",
- projectId:"YOUR-PROJECT",
- storageBucket:"YOUR-PROJECT.appspot.com",
- messagingSenderId:"SENDER-ID",
- appId:"APP-ID"
+const firebaseConfig = {
+  apiKey: "AIzaSyC6aUW6S7rlVbedhsRIxuoS9MIhEbgIVXo",
+  authDomain: "who-5-test.firebaseapp.com",
+  databaseURL: "https://who-5-test-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "who-5-test",
+  storageBucket: "who-5-test.firebasestorage.app",
+  messagingSenderId: "934691632402",
+  appId: "1:934691632402:web:925f243dffa4b97cf86fcb"
 };
 const app=initializeApp(cfg), db=getDatabase(app);
 
