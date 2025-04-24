@@ -5,7 +5,11 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>WHO-5</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
-<style>.choice.selected{outline:2px solid #000}.score{font-size:1.3rem;font-weight:700}</style>
+<style>
+.choice.selected{outline:2px solid #000}
+.score{font-size:1.3rem;font-weight:700}
+fieldset.qwrap{border:none;padding:0;margin:0 0 1rem}
+</style>
 
 <script type="module">
 import { initializeApp }   from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
@@ -21,32 +25,33 @@ const firebaseConfig={
   appId:"1:934691632402:web:925f243dffa4b97cf86fcb"
 };
 const app=initializeApp(firebaseConfig);
-const db =getDatabase(app);
+const db = getDatabase(app);
 
-// UI helpers
-window.sel=(q,v,b)=>{
-  document.getElementById(q).value=v;
-  b.parentElement.querySelectorAll('.choice').forEach(x=>x.classList.remove('selected'));
-  b.classList.add('selected');
+/* ===== helper functions ===== */
+window.sel=(q,val,btn)=>{
+  document.getElementById(q).value=val;
+  btn.closest('.qwrap').querySelectorAll('.choice').forEach(b=>b.classList.remove('selected'));
+  btn.classList.add('selected');
 };
 window.clearAll=()=>{
- document.querySelectorAll('.q').forEach(i=>i.value='');
- document.querySelectorAll('.choice').forEach(b=>b.classList.remove('selected'));
- ["top","bot"].forEach(id=>document.getElementById(id).textContent='');
+  document.querySelectorAll('.q').forEach(i=>i.value='');
+  document.querySelectorAll('.choice').forEach(b=>b.classList.remove('selected'));
+  ['top','bot'].forEach(id=>document.getElementById(id).textContent='');
 };
 window.submit=(e)=>{
   e.preventDefault();
-  const vals=[1,2,3,4,5].map(i=>document.getElementById('q'+i).value);
-  if(vals.some(v=>v==='')){alert('Answer all 5');return;}
-  const score=vals.reduce((s,v)=>s+Number(v),0)*4;
-  ["top","bot"].forEach(id=>document.getElementById(id).textContent=`Your WHO-5: ${score}`);
+  const v=[1,2,3,4,5].map(i=>document.getElementById('q'+i).value);
+  if(v.some(x=>x==='')){alert('Please answer all five items');return;}
+  const score=v.reduce((s,n)=>s+Number(n),0)*4;
+  ['top','bot'].forEach(id=>document.getElementById(id).textContent=`Your WHO-5: ${score}`);
   push(ref(db,'scores'),score);
 };
 </script>
 </head>
-<body class="container">
 
+<body class="container">
 <h1>WHO-5 Well-Being Index</h1>
+
 <form onsubmit="submit(event)">
 <nav>
   <button type="submit">Submit</button>
@@ -55,15 +60,23 @@ window.submit=(e)=>{
 </nav>
 
 <script>
-const txt=[
+const items=[
 'I have felt cheerful and in good spirits',
 'I have felt calm and relaxed',
 'I have felt active and vigorous',
 'I woke up feeling fresh and rested',
 'My daily life has been filled with things that interest me'];
-txt.forEach((t,i)=>{
- document.write(`<h3>${t}</h3><input type="hidden" id="q${i+1}" class="q">
-   ${[5,4,3,2,1,0].map(v=>`<button type="button" class="choice" onclick="sel('q${i+1}',${v},this)">${v===5?'All of the time':v===0?'At no time':v===4?'Most of the time':v===3?'More than half':v===2?'Less than half':'Some of the time'}</button>`).join(' ')}`);
+items.forEach((text,i)=>{
+ document.write(`
+  <fieldset class="qwrap">
+   <legend><strong>${text}</strong></legend>
+   <input type="hidden" id="q${i+1}" class="q">
+   ${[5,4,3,2,1,0].map(v=>`<button type="button" class="choice" onclick="sel('q${i+1}',${v},this)">
+        ${v===5?'All of the time':v===0?'At no time':
+          v===4?'Most of the time':v===3?'More than half of the time':
+          v===2?'Less than half of the time':'Some of the time'}
+      </button>`).join(' ')}
+  </fieldset>`);
 });
 </script>
 
