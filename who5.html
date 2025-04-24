@@ -4,10 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>WHO-5 Questionnaire</title>
-
 <!-- Minimal styling via PicoCSS -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
-
 <style>
 /* hide native radios, style labels as buttons */
 input[type=radio]{display:none}
@@ -23,12 +21,24 @@ input[type=radio]:checked + label.choice{
 fieldset{border:none;margin:0 0 1.2rem;padding:0}
 legend{font-weight:600}
 </style>
+</head>
+<body class="container">
+<h1>WHO-5 Well-Being Index</h1>
+<form id="form">
+<nav>
+  <button type="submit">Submit</button>
+  <button type="button" id="clearBtn">Clear</button>
+  <span id="top" class="score"></span>
+</nav>
+<!-- Questions will be inserted here by JavaScript -->
+<div id="questions-container"></div>
+<p id="bot" class="score"></p>
+</form>
 
 <!-- Firebase + logic -->
 <script type="module">
 import { initializeApp }            from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
 import { getDatabase, push, ref }   from "https://www.gstatic.com/firebasejs/10.11.0/firebase-database.js";
-
 /* --- your Firebase project --- */
 const firebaseConfig={
   apiKey:"AIzaSyC6aUW6S7rlVbedhsRIxuoS9MIhEbgIVXo",
@@ -45,7 +55,8 @@ const db  = getDatabase(app);
 /* --- helpers --- */
 function clearForm(){
   document.getElementById('form').reset();
-  ['top','bot'].forEach(id=>document.getElementById(id).textContent='');
+  document.getElementById('top').textContent = '';
+  document.getElementById('bot').textContent = '';
 }
 
 function submitForm(e){
@@ -56,50 +67,65 @@ function submitForm(e){
   });
   if(values.includes(null)){alert('Please answer all five items');return;}
   const score = values.reduce((a,b)=>a+b)*4;
-  ['top','bot'].forEach(id=>document.getElementById(id).textContent=`Your WHO-5 score: ${score}`);
+  document.getElementById('top').textContent = `Your WHO-5 score: ${score}`;
+  document.getElementById('bot').textContent = `Your WHO-5 score: ${score}`;
   push(ref(db,'scores'),score);
 }
-window.clearForm = clearForm;   // expose for button
-window.submitForm = submitForm; // expose for form
-</script>
-</head>
 
-<body class="container">
+// Questions and labels
+const questions = [
+  'I have felt cheerful and in good spirits',
+  'I have felt calm and relaxed',
+  'I have felt active and vigorous',
+  'I woke up feeling fresh and rested',
+  'My daily life has been filled with things that interest me'
+];
 
-<h1>WHO-5 Well-Being Index</h1>
+const labels = {
+  5: 'All of the time',
+  4: 'Most of the time',
+  3: 'More than half of the time',
+  2: 'Less than half of the time',
+  1: 'Some of the time',
+  0: 'At no time'
+};
 
-<form id="form" onsubmit="submitForm(event)">
-
-<nav>
-  <button type="submit">Submit</button>
-  <button type="button" onclick="clearForm()">Clear</button>
-  <span id="top" class="score"></span>
-</nav>
-
-<!-- Questions -->
-<script>
-const qs=[
-'I have felt cheerful and in good spirits',
-'I have felt calm and relaxed',
-'I have felt active and vigorous',
-'I woke up feeling fresh and rested',
-'My daily life has been filled with things that interest me'];
-
-const labels={5:'All of the time',4:'Most of the time',3:'More than half of the time',
-              2:'Less than half of the time',1:'Some of the time',0:'At no time'};
-
-qs.forEach((text,i)=>{
-  document.write(`<fieldset><legend>${text}</legend>`);
-  [5,4,3,2,1,0].forEach(v=>{
-    document.write(`
-     <input type="radio" id="q${i+1}_${v}" name="q${i+1}" value="${v}">
-     <label for="q${i+1}_${v}" class="choice">${labels[v]}</label>`);
+// Generate questions using proper DOM methods
+function generateQuestions() {
+  const container = document.getElementById('questions-container');
+  
+  questions.forEach((text, i) => {
+    const fieldset = document.createElement('fieldset');
+    const legend = document.createElement('legend');
+    legend.textContent = text;
+    fieldset.appendChild(legend);
+    
+    [5, 4, 3, 2, 1, 0].forEach(v => {
+      const input = document.createElement('input');
+      input.type = 'radio';
+      input.id = `q${i+1}_${v}`;
+      input.name = `q${i+1}`;
+      input.value = v;
+      
+      const label = document.createElement('label');
+      label.setAttribute('for', `q${i+1}_${v}`);
+      label.className = 'choice';
+      label.textContent = labels[v];
+      
+      fieldset.appendChild(input);
+      fieldset.appendChild(label);
+    });
+    
+    container.appendChild(fieldset);
   });
-  document.write(`</fieldset>`);
+}
+
+// Set up event listeners
+document.addEventListener('DOMContentLoaded', function() {
+  generateQuestions();
+  document.getElementById('form').addEventListener('submit', submitForm);
+  document.getElementById('clearBtn').addEventListener('click', clearForm);
 });
 </script>
-
-<p id="bot" class="score"></p>
-</form>
 </body>
 </html>
