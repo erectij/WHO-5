@@ -1,177 +1,314 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>WHO-5 Questionnaire</title>
-<!-- Minimal styling via PicoCSS -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
-<style>
-/* hide native radios, style labels as buttons */
-input[type=radio]{display:none}
-.choice{
-  display:inline-block;margin:0.25rem 0.15rem;padding:0.4rem 0.6rem;
-  border:1px solid #bbb;border-radius:4px;cursor:pointer;
-  user-select:none;transition:background 0.1s;
-}
-input[type=radio]:checked + label.choice{
-  background:#0077c2;color:#fff;font-weight:600;border-color:#0077c2;
-}
-.score{font-size:1.25rem;font-weight:700}
-fieldset{border:none;margin:0 0 1.2rem;padding:0}
-legend{font-weight:600}
-.error{color:red;font-weight:bold;margin-top:1rem}
-.success{color:green;font-weight:bold;margin-top:1rem}
-#status{margin-top:1rem}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WHO-5 Well-Being Index</title>
+    <style>
+        body {
+            font-size: 16px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            padding-top: 70px; /* Space for fixed top bar */
+            max-width: 800px;
+            margin: 0 auto;
+            padding-left: 15px;
+            padding-right: 15px;
+        }
+        .top-buttons {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            background-color: #f8f8f8;
+            padding: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            z-index: 1000;
+            display: flex;
+            justify-content: center;
+        }
+        .top-buttons-inner {
+            max-width: 800px;
+            width: 100%;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .top-buttons button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            background-color: #0077c2;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .top-buttons button:hover {
+            background-color: #005fa3;
+        }
+        .score {
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-left: 15px;
+        }
+        .question-group {
+            margin-bottom: 25px;
+        }
+        .question-group > label {
+            font-size: 1.125em;
+            display: block;
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+        .button-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .choice-button {
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            cursor: pointer;
+            text-align: left;
+            font-size: 1em;
+            transition: all 0.2s ease;
+        }
+        .choice-button[data-value="0"] { background-color: #E0F9F9; }
+        .choice-button[data-value="1"] { background-color: #D0F4F4; }
+        .choice-button[data-value="2"] { background-color: #A1E9E9; }
+        .choice-button[data-value="3"] { background-color: #71DEDE; }
+        .choice-button[data-value="4"] { background-color: #42D3D3; }
+        .choice-button[data-value="5"] { background-color: #12C8C8; }
+        .choice-button.selected {
+            background-color: #0077c2 !important;
+            color: white;
+            font-weight: bold;
+            box-shadow: 0 0 5px rgba(0,0,0,0.3);
+        }
+        .submit-buttons {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+        }
+        .submit-buttons button, .submit-buttons input[type="submit"] {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            background-color: #0077c2;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .status {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .error {
+            background-color: #ffebee;
+            color: #c62828;
+            border: 1px solid #ef9a9a;
+        }
+        .success {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+            border: 1px solid #a5d6a7;
+        }
+        h1 {
+            color: #003366;
+            margin-bottom: 25px;
+        }
+    </style>
 </head>
-<body class="container">
-<h1>WHO-5 Well-Being Index</h1>
-<form id="form">
-<nav>
-  <button type="submit">Submit</button>
-  <button type="button" id="clearBtn">Clear</button>
-  <span id="top" class="score"></span>
-</nav>
-<!-- Questions will be inserted here by JavaScript -->
-<div id="questions-container"></div>
-<p id="bot" class="score"></p>
-<div id="status"></div>
-</form>
+<body>
+    <div class="top-buttons">
+        <div class="top-buttons-inner">
+            <button onclick="submitForm(event)">Calculate Score</button>
+            <button onclick="clearForm()">Clear Form</button>
+            <p id="resultTop" class="score"></p>
+        </div>
+    </div>
 
-<!-- Firebase + logic -->
-<script type="module">
-import { initializeApp }            from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
-import { getDatabase, push, ref }   from "https://www.gstatic.com/firebasejs/10.11.0/firebase-database.js";
-/* --- your Firebase project --- */
-const firebaseConfig={
-  apiKey:"AIzaSyC6aUW6S7rlVbedhsRIxuoS9MIhEbgIVXo",
-  authDomain:"who-5-test.firebaseapp.com",
-  databaseURL:"https://who-5-test-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId:"who-5-test",
-  storageBucket:"who-5-test.appspot.com",
-  messagingSenderId:"934691632402",
-  appId:"1:934691632402:web:925f243dffa4b97cf86fcb"
-};
-
-// Display status messages
-function showStatus(message, isError = false) {
-  const statusEl = document.getElementById('status');
-  statusEl.innerHTML = '';
-  const messageEl = document.createElement('p');
-  messageEl.textContent = message;
-  messageEl.className = isError ? 'error' : 'success';
-  statusEl.appendChild(messageEl);
-}
-
-try {
-  console.log("Initializing Firebase...");
-  const app = initializeApp(firebaseConfig);
-  const db = getDatabase(app);
-  console.log("Firebase initialized successfully");
-
-  /* --- helpers --- */
-  function clearForm(){
-    document.getElementById('form').reset();
-    document.getElementById('top').textContent = '';
-    document.getElementById('bot').textContent = '';
-    document.getElementById('status').innerHTML = '';
-  }
-
-  function submitForm(e){
-    e.preventDefault();
-    const values=[1,2,3,4,5].map(i=>{
-      const sel=document.querySelector(`input[name=q${i}]:checked`);
-      return sel ? Number(sel.value) : null;
-    });
-    
-    console.log("Form values:", values);
-    
-    if(values.includes(null)){
-      alert('Please answer all five items');
-      return;
-    }
-    
-    const score = values.reduce((a,b)=>a+b)*4;
-    console.log("Calculated score:", score);
-    
-    document.getElementById('top').textContent = `Your WHO-5 score: ${score}`;
-    document.getElementById('bot').textContent = `Your WHO-5 score: ${score}`;
-    
-    // Add loading indicator
-    showStatus("Submitting score...");
-    
-    // Push to Firebase with error handling
-    push(ref(db,'scores'), score)
-      .then(() => {
-        console.log("Successfully submitted score to Firebase:", score);
-        showStatus("Your score has been successfully submitted!");
-      })
-      .catch((error) => {
-        console.error("Error submitting score to Firebase:", error);
-        showStatus("Error submitting score: " + error.message, true);
-      });
-  }
-
-  // Questions and labels
-  const questions = [
-    'I have felt cheerful and in good spirits',
-    'I have felt calm and relaxed',
-    'I have felt active and vigorous',
-    'I woke up feeling fresh and rested',
-    'My daily life has been filled with things that interest me'
-  ];
-
-  const labels = {
-    5: 'All of the time',
-    4: 'Most of the time',
-    3: 'More than half of the time',
-    2: 'Less than half of the time',
-    1: 'Some of the time',
-    0: 'At no time'
-  };
-
-  // Generate questions using proper DOM methods
-  function generateQuestions() {
-    const container = document.getElementById('questions-container');
-    
-    questions.forEach((text, i) => {
-      const fieldset = document.createElement('fieldset');
-      const legend = document.createElement('legend');
-      legend.textContent = text;
-      fieldset.appendChild(legend);
-      
-      [5, 4, 3, 2, 1, 0].forEach(v => {
-        const input = document.createElement('input');
-        input.type = 'radio';
-        input.id = `q${i+1}_${v}`;
-        input.name = `q${i+1}`;
-        input.value = v;
+    <h1>WHO-5 Well-Being Index</h1>
+    <form id="form">
+        <p>Over the last two weeks, how often have you felt the following:</p>
         
-        const label = document.createElement('label');
-        label.setAttribute('for', `q${i+1}_${v}`);
-        label.className = 'choice';
-        label.textContent = labels[v];
-        
-        fieldset.appendChild(input);
-        fieldset.appendChild(label);
-      });
-      
-      container.appendChild(fieldset);
-    });
-  }
+        <div class="question-group">
+            <label>I have felt cheerful and in good spirits</label>
+            <input type="hidden" id="q1" class="question-input" name="q1">
+            <div class="button-group">
+                <button type="button" class="choice-button" data-value="5" onclick="selectChoice('q1', 5, this)">All of the time</button>
+                <button type="button" class="choice-button" data-value="4" onclick="selectChoice('q1', 4, this)">Most of the time</button>
+                <button type="button" class="choice-button" data-value="3" onclick="selectChoice('q1', 3, this)">More than half of the time</button>
+                <button type="button" class="choice-button" data-value="2" onclick="selectChoice('q1', 2, this)">Less than half of the time</button>
+                <button type="button" class="choice-button" data-value="1" onclick="selectChoice('q1', 1, this)">Some of the time</button>
+                <button type="button" class="choice-button" data-value="0" onclick="selectChoice('q1', 0, this)">At no time</button>
+            </div>
+        </div>
 
-  // Set up event listeners
-  document.addEventListener('DOMContentLoaded', function() {
-    console.log("DOM loaded, generating questions");
-    generateQuestions();
-    document.getElementById('form').addEventListener('submit', submitForm);
-    document.getElementById('clearBtn').addEventListener('click', clearForm);
-  });
-} catch (error) {
-  console.error("Error initializing the application:", error);
-  showStatus("Error initializing the application: " + error.message, true);
-}
-</script>
+        <div class="question-group">
+            <label>I have felt calm and relaxed</label>
+            <input type="hidden" id="q2" class="question-input" name="q2">
+            <div class="button-group">
+                <button type="button" class="choice-button" data-value="5" onclick="selectChoice('q2', 5, this)">All of the time</button>
+                <button type="button" class="choice-button" data-value="4" onclick="selectChoice('q2', 4, this)">Most of the time</button>
+                <button type="button" class="choice-button" data-value="3" onclick="selectChoice('q2', 3, this)">More than half of the time</button>
+                <button type="button" class="choice-button" data-value="2" onclick="selectChoice('q2', 2, this)">Less than half of the time</button>
+                <button type="button" class="choice-button" data-value="1" onclick="selectChoice('q2', 1, this)">Some of the time</button>
+                <button type="button" class="choice-button" data-value="0" onclick="selectChoice('q2', 0, this)">At no time</button>
+            </div>
+        </div>
+
+        <div class="question-group">
+            <label>I have felt active and vigorous</label>
+            <input type="hidden" id="q3" class="question-input" name="q3">
+            <div class="button-group">
+                <button type="button" class="choice-button" data-value="5" onclick="selectChoice('q3', 5, this)">All of the time</button>
+                <button type="button" class="choice-button" data-value="4" onclick="selectChoice('q3', 4, this)">Most of the time</button>
+                <button type="button" class="choice-button" data-value="3" onclick="selectChoice('q3', 3, this)">More than half of the time</button>
+                <button type="button" class="choice-button" data-value="2" onclick="selectChoice('q3', 2, this)">Less than half of the time</button>
+                <button type="button" class="choice-button" data-value="1" onclick="selectChoice('q3', 1, this)">Some of the time</button>
+                <button type="button" class="choice-button" data-value="0" onclick="selectChoice('q3', 0, this)">At no time</button>
+            </div>
+        </div>
+
+        <div class="question-group">
+            <label>I woke up feeling fresh and rested</label>
+            <input type="hidden" id="q4" class="question-input" name="q4">
+            <div class="button-group">
+                <button type="button" class="choice-button" data-value="5" onclick="selectChoice('q4', 5, this)">All of the time</button>
+                <button type="button" class="choice-button" data-value="4" onclick="selectChoice('q4', 4, this)">Most of the time</button>
+                <button type="button" class="choice-button" data-value="3" onclick="selectChoice('q4', 3, this)">More than half of the time</button>
+                <button type="button" class="choice-button" data-value="2" onclick="selectChoice('q4', 2, this)">Less than half of the time</button>
+                <button type="button" class="choice-button" data-value="1" onclick="selectChoice('q4', 1, this)">Some of the time</button>
+                <button type="button" class="choice-button" data-value="0" onclick="selectChoice('q4', 0, this)">At no time</button>
+            </div>
+        </div>
+
+        <div class="question-group">
+            <label>My daily life has been filled with things that interest me</label>
+            <input type="hidden" id="q5" class="question-input" name="q5">
+            <div class="button-group">
+                <button type="button" class="choice-button" data-value="5" onclick="selectChoice('q5', 5, this)">All of the time</button>
+                <button type="button" class="choice-button" data-value="4" onclick="selectChoice('q5', 4, this)">Most of the time</button>
+                <button type="button" class="choice-button" data-value="3" onclick="selectChoice('q5', 3, this)">More than half of the time</button>
+                <button type="button" class="choice-button" data-value="2" onclick="selectChoice('q5', 2, this)">Less than half of the time</button>
+                <button type="button" class="choice-button" data-value="1" onclick="selectChoice('q5', 1, this)">Some of the time</button>
+                <button type="button" class="choice-button" data-value="0" onclick="selectChoice('q5', 0, this)">At no time</button>
+            </div>
+        </div>
+
+        <div class="submit-buttons">
+            <input type="submit" value="Submit Score" onclick="submitForm(event)">
+            <button type="button" onclick="clearForm()">Clear Form</button>
+        </div>
+    </form>
+    <p id="resultBottom" class="score"></p>
+    <div id="status"></div>
+
+    <!-- Firebase + logic -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
+        import { getDatabase, push, ref } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-database.js";
+        
+        /* --- your Firebase project --- */
+        const firebaseConfig = {
+            apiKey: "AIzaSyC6aUW6S7rlVbedhsRIxuoS9MIhEbgIVXo",
+            authDomain: "who-5-test.firebaseapp.com",
+            databaseURL: "https://who-5-test-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "who-5-test",
+            storageBucket: "who-5-test.appspot.com",
+            messagingSenderId: "934691632402",
+            appId: "1:934691632402:web:925f243dffa4b97cf86fcb"
+        };
+
+        // Initialize Firebase
+        try {
+            const app = initializeApp(firebaseConfig);
+            const db = getDatabase(app);
+            console.log("Firebase initialized successfully");
+
+            // Expose functions to window so they're available to inline onclick handlers
+            window.selectChoice = function(questionId, value, button) {
+                document.getElementById(questionId).value = value;
+                let buttons = button.parentElement.getElementsByClassName('choice-button');
+                for (let btn of buttons) {
+                    btn.classList.remove('selected');
+                }
+                button.classList.add('selected');
+            };
+
+            window.clearForm = function() {
+                document.getElementById('form').reset();
+                let inputs = document.getElementsByClassName('question-input');
+                for (let input of inputs) {
+                    input.value = '';
+                }
+                let buttons = document.getElementsByClassName('choice-button');
+                for (let btn of buttons) {
+                    btn.classList.remove('selected');
+                }
+                document.getElementById('resultTop').textContent = '';
+                document.getElementById('resultBottom').textContent = '';
+                document.getElementById('status').innerHTML = '';
+            };
+
+            window.submitForm = function(event) {
+                event.preventDefault();
+                
+                // Get values from all questions
+                const values = [1, 2, 3, 4, 5].map(i => {
+                    const val = document.getElementById(`q${i}`).value;
+                    return val ? Number(val) : null;
+                });
+                
+                console.log("Form values:", values);
+                
+                // Validate all questions are answered
+                if (values.includes(null)) {
+                    showStatus("Please answer all five questions", true);
+                    return;
+                }
+                
+                // Calculate score (sum × 4)
+                const score = values.reduce((a, b) => a + b, 0) * 4;
+                console.log("Calculated score:", score);
+                
+                // Display score
+                const scoreText = `Your WHO-5 score: ${score}`;
+                document.getElementById('resultTop').textContent = scoreText;
+                document.getElementById('resultBottom').textContent = scoreText;
+                
+                // Show submitting status
+                showStatus("Submitting score...", false);
+                
+                // Submit to Firebase
+                push(ref(db, 'scores'), score)
+                    .then(() => {
+                        console.log("Successfully submitted score to Firebase:", score);
+                        showStatus("Your score has been successfully submitted!", false);
+                    })
+                    .catch((error) => {
+                        console.error("Error submitting score to Firebase:", error);
+                        showStatus("Error submitting score: " + error.message, true);
+                    });
+            };
+
+            function showStatus(message, isError) {
+                const statusEl = document.getElementById('status');
+                statusEl.textContent = message;
+                statusEl.className = isError ? 'status error' : 'status success';
+            }
+
+            // Make showStatus available to the window
+            window.showStatus = showStatus;
+
+        } catch (error) {
+            console.error("Error initializing Firebase:", error);
+            const statusEl = document.getElementById('status');
+            statusEl.textContent = "Error initializing application: " + error.message;
+            statusEl.className = 'status error';
+        }
+    </script>
 </body>
 </html>
