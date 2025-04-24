@@ -7,25 +7,164 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script>
 <style>
-  .error { color: red; font-weight: bold; }
-  #debug { 
-    margin-top: 20px;
-    padding: 10px; 
-    background: #f8f8f8; 
-    border: 1px solid #ddd;
-    white-space: pre-wrap;
-    font-family: monospace;
-    display: none;
-  }
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        max-width: 1000px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+    h1, h2 {
+        color: #003366;
+    }
+    .qr-container {
+        text-align: center;
+        margin: 20px 0;
+    }
+    .qr-image {
+        max-width: 200px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+    }
+    .dashboard-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+    .action-buttons {
+        display: flex;
+        gap: 10px;
+    }
+    .btn-danger {
+        background-color: #dc3545;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+    .btn-danger:hover {
+        background-color: #bd2130;
+    }
+    #mean {
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: #0077c2;
+    }
+    #status {
+        margin-top: 15px;
+        padding: 10px;
+        border-radius: 4px;
+        display: none;
+    }
+    .error {
+        background-color: #ffebee;
+        color: #c62828;
+        border: 1px solid #ef9a9a;
+    }
+    .success {
+        background-color: #e8f5e9;
+        color: #2e7d32;
+        border: 1px solid #a5d6a7;
+    }
+    .stats-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 20px;
+        margin: 20px 0;
+    }
+    .stat-box {
+        background-color: #f5f5f5;
+        padding: 15px;
+        border-radius: 8px;
+        flex: 1;
+        min-width: 150px;
+        text-align: center;
+    }
+    .stat-value {
+        font-size: 2rem;
+        font-weight: bold;
+        color: #0077c2;
+    }
+    .stat-label {
+        font-size: 0.9rem;
+        color: #666;
+    }
+    #password-modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0,0,0,0.7);
+        z-index: 1000;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+    .modal-content {
+        background-color: white;
+        padding: 20px;
+        border-radius: 8px;
+        max-width: 400px;
+        width: 100%;
+    }
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .close-btn {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        cursor: pointer;
+    }
 </style>
 </head>
-<body class="container">
-<h1>Live WHO-5 Scores</h1>
+<body>
+<div class="dashboard-header">
+    <h1>Live WHO-5 Scores</h1>
+    <div class="action-buttons">
+        <button id="clearDataBtn" class="btn-danger">Clear All Data</button>
+    </div>
+</div>
+
+<div class="stats-container">
+    <div class="stat-box">
+        <div id="n" class="stat-value">0</div>
+        <div class="stat-label">Total Responses</div>
+    </div>
+    <div class="stat-box">
+        <div id="mean-value" class="stat-value">-</div>
+        <div class="stat-label">Mean Score</div>
+    </div>
+</div>
+
 <h2 id="mean">No data yet</h2>
+
+<div class="qr-container">
+    <img src="QR.jpg" alt="QR Code" class="qr-image">
+</div>
+
 <canvas id="hist" height="280"></canvas>
-<p>Total respondents: <span id="n">0</span></p>
-<div id="debug"></div>
-<button id="toggleDebug" type="button">Show Debug Info</button>
+
+<div id="status"></div>
+
+<!-- Password confirmation modal -->
+<div id="password-modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Confirm Action</h3>
+            <button class="close-btn" id="closeModal">&times;</button>
+        </div>
+        <p>Please enter the password to clear all data:</p>
+        <input type="password" id="passwordInput" placeholder="Password">
+        <button id="confirmClearBtn">Confirm Clear</button>
+        <button id="cancelClearBtn">Cancel</button>
+    </div>
+</div>
 
 <!-- --- SCRIPT AFTER THE DOM --- -->
 <script type="module">
@@ -35,34 +174,10 @@ if (prompt('Password?') !== 'mammabird') {
   throw '';
 }
 
-const debugEl = document.getElementById('debug');
-const toggleDebugBtn = document.getElementById('toggleDebug');
-
-// Debug helper function
-function logDebug(message, data) {
-  console.log(message, data);
-  const timestamp = new Date().toLocaleTimeString();
-  debugEl.innerHTML += `[${timestamp}] ${message}\n`;
-  if (data) {
-    debugEl.innerHTML += JSON.stringify(data, null, 2) + '\n\n';
-  } else {
-    debugEl.innerHTML += '\n';
-  }
-}
-
-toggleDebugBtn.addEventListener('click', () => {
-  if (debugEl.style.display === 'none' || !debugEl.style.display) {
-    debugEl.style.display = 'block';
-    toggleDebugBtn.textContent = 'Hide Debug Info';
-  } else {
-    debugEl.style.display = 'none';
-    toggleDebugBtn.textContent = 'Show Debug Info';
-  }
-});
-
 /* Firebase */
 import { initializeApp }   from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
-import { getDatabase, onValue, ref, get } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-database.js";
+import { getDatabase, onValue, ref, remove, get } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-database.js";
+
 const cfg = {
   apiKey: "AIzaSyC6aUW6S7rlVbedhsRIxuoS9MIhEbgIVXo",
   authDomain: "who-5-test.firebaseapp.com",
@@ -73,113 +188,224 @@ const cfg = {
   appId: "1:934691632402:web:925f243dffa4b97cf86fcb"
 };
 
+// Initialize Firebase
 try {
-  logDebug('Initializing Firebase...');
-  const app = initializeApp(cfg);
-  const db  = getDatabase(app);
-  logDebug('Firebase initialized successfully');
-  
-  /* Chart setup (DOM now exists) */
-  const ctx     = document.getElementById('hist').getContext('2d');
-  const labels  = [...Array(10)].map((_, i) => `${i*10}-${i*10+9}`);
-  const counts  = new Array(10).fill(0);
-  const chart   = new Chart(ctx, {
-    type: 'bar',
-    data: { 
-      labels, 
-      datasets: [{ 
-        data: counts,
-        backgroundColor: 'rgba(54, 162, 235, 0.6)',
-        borderColor: 'rgba(54, 162, 235, 1)',
-        borderWidth: 1
-      }] 
-    },
-    options: { 
-      animation: false, 
-      scales: { y: { beginAtZero: true, stepSize: 1 } },
-      plugins: {
-        legend: {
-          display: false
+    const app = initializeApp(cfg);
+    const db = getDatabase(app);
+    console.log("Firebase initialized successfully");
+
+    // UI elements
+    const meanEl = document.getElementById('mean');
+    const meanValueEl = document.getElementById('mean-value');
+    const nEl = document.getElementById('n');
+    const statusEl = document.getElementById('status');
+    const clearDataBtn = document.getElementById('clearDataBtn');
+    const passwordModal = document.getElementById('password-modal');
+    const closeModalBtn = document.getElementById('closeModal');
+    const confirmClearBtn = document.getElementById('confirmClearBtn');
+    const cancelClearBtn = document.getElementById('cancelClearBtn');
+    const passwordInput = document.getElementById('passwordInput');
+
+    // Function to show status messages
+    function showStatus(message, isError = false) {
+        statusEl.textContent = message;
+        statusEl.className = isError ? 'error' : 'success';
+        statusEl.style.display = 'block';
+        
+        // Hide the message after 5 seconds
+        setTimeout(() => {
+            statusEl.style.display = 'none';
+        }, 5000);
+    }
+
+    // Chart setup (DOM now exists)
+    const ctx = document.getElementById('hist').getContext('2d');
+    const labels = [...Array(10)].map((_, i) => `${i*10}-${i*10+9}`);
+    const counts = new Array(10).fill(0);
+    
+    // Create chart with WHO-5 button colors as gradient
+    const chart = new Chart(ctx, {
+        type: 'bar',
+        data: { 
+            labels, 
+            datasets: [{ 
+                data: counts,
+                backgroundColor: [
+                    '#E0F9F9', // At no time
+                    '#D0F4F4', // Some of the time
+                    '#A1E9E9', // Less than half of the time
+                    '#71DEDE', // More than half of the time
+                    '#42D3D3', // Most of the time
+                    '#12C8C8', // All of the time
+                    '#12C8C8', 
+                    '#12C8C8',
+                    '#12C8C8',
+                    '#12C8C8'
+                ],
+                borderColor: '#0077c2',
+                borderWidth: 1
+            }] 
+        },
+        options: { 
+            animation: false, 
+            scales: { 
+                y: { 
+                    beginAtZero: true, 
+                    stepSize: 1,
+                    title: {
+                        display: true,
+                        text: 'Number of Responses'
+                    }
+                },
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Score Range'
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                },
+                title: {
+                    display: true,
+                    text: 'WHO-5 Score Distribution',
+                    font: {
+                        size: 16
+                    }
+                }
+            }
         }
-      }
-    }
-  });
-  const meanEl = document.getElementById('mean');
-  const nEl    = document.getElementById('n');
+    });
 
-  /* Check data exists first */
-  logDebug('Checking if scores data exists...');
-  get(ref(db, 'scores')).then(snapshot => {
-    if (snapshot.exists()) {
-      logDebug('Scores data exists:', snapshot.val());
-    } else {
-      logDebug('No scores data found in database');
+    // Function to clear all data
+    function clearAllData() {
+        passwordModal.style.display = 'flex';
     }
-  }).catch(error => {
-    logDebug('Error checking scores data:', error);
-  });
 
-  /* Live listener */
-  logDebug('Setting up real-time listener for scores...');
-  onValue(
-    ref(db, 'scores'), 
-    snap => {
-      logDebug('Data received from Firebase');
-      counts.fill(0);
-      const scores = [];
-      
-      if (!snap.exists()) {
-        logDebug('No data in snapshot');
-        return;
-      }
-      
-      snap.forEach(c => {
-        const value = c.val();
-        logDebug(`Found score:`, value);
-        scores.push(value);
-      });
-      
-      logDebug(`Processing ${scores.length} scores`);
-      
-      scores.forEach(s => {
-        // Make sure s is a number
-        const score = Number(s);
-        if (!isNaN(score)) {
-          const index = Math.min(Math.floor(score / 10), 9);
-          counts[index]++;
+    // Confirm clearing data with password
+    function confirmClearData() {
+        if (passwordInput.value === 'mammabird') {
+            passwordModal.style.display = 'none';
+            
+            // Show loading status
+            showStatus("Clearing data...");
+            
+            // Clear firebase data
+            remove(ref(db, 'scores'))
+                .then(() => {
+                    console.log("Successfully cleared all data");
+                    showStatus("All data has been successfully cleared!");
+                    
+                    // Reset chart
+                    counts.fill(0);
+                    chart.update();
+                    
+                    // Reset stats
+                    meanEl.textContent = 'No data yet';
+                    meanValueEl.textContent = '-';
+                    nEl.textContent = '0';
+                })
+                .catch((error) => {
+                    console.error("Error clearing data:", error);
+                    showStatus("Error clearing data: " + error.message, true);
+                });
         } else {
-          logDebug(`Invalid score value: ${s}`);
+            showStatus("Incorrect password", true);
         }
-      });
-      
-      logDebug('Histogram data:', counts);
-      chart.update();
-      
-      if (scores.length) {
-        const sum = scores.reduce((a, b) => Number(a) + Number(b), 0);
-        const mean = Math.round(sum / scores.length);
-        logDebug(`Calculated mean: ${mean} from sum: ${sum} and count: ${scores.length}`);
-        meanEl.textContent = `Mean WHO-5: ${mean}`;
-      } else {
-        meanEl.textContent = 'No data yet';
-      }
-      
-      nEl.textContent = scores.length;
-    },
-    error => {
-      logDebug('Error in Firebase onValue listener:', error);
-      const errorDiv = document.createElement('div');
-      errorDiv.className = 'error';
-      errorDiv.textContent = `Error loading data: ${error.message}`;
-      document.body.appendChild(errorDiv);
+        passwordInput.value = '';
     }
-  );
+
+    // Event listeners for modal
+    clearDataBtn.addEventListener('click', clearAllData);
+    closeModalBtn.addEventListener('click', () => passwordModal.style.display = 'none');
+    cancelClearBtn.addEventListener('click', () => passwordModal.style.display = 'none');
+    confirmClearBtn.addEventListener('click', confirmClearData);
+    
+    // Close modal if clicked outside
+    window.addEventListener('click', event => {
+        if (event.target === passwordModal) {
+            passwordModal.style.display = 'none';
+        }
+    });
+
+    // Check data exists first
+    get(ref(db, 'scores')).then(snapshot => {
+        if (snapshot.exists()) {
+            console.log("Initial data check: Scores data exists");
+        } else {
+            console.log("Initial data check: No scores data found in database");
+            showStatus("No data in database yet");
+        }
+    }).catch(error => {
+        console.error("Error checking scores data:", error);
+        showStatus("Error loading data: " + error.message, true);
+    });
+
+    /* Live listener */
+    onValue(
+        ref(db, 'scores'), 
+        snapshot => {
+            console.log("Data received from Firebase");
+            counts.fill(0);
+            const scores = [];
+            
+            if (!snapshot.exists()) {
+                console.log("No data in snapshot");
+                meanEl.textContent = 'No data yet';
+                meanValueEl.textContent = '-';
+                nEl.textContent = '0';
+                chart.update();
+                return;
+            }
+            
+            snapshot.forEach(child => {
+                const value = child.val();
+                console.log(`Found score:`, value);
+                scores.push(value);
+            });
+            
+            console.log(`Processing ${scores.length} scores`);
+            
+            // Count scores for histogram
+            scores.forEach(s => {
+                // Make sure s is a number
+                const score = Number(s);
+                if (!isNaN(score)) {
+                    const index = Math.min(Math.floor(score / 10), 9);
+                    counts[index]++;
+                } else {
+                    console.log(`Invalid score value: ${s}`);
+                }
+            });
+            
+            console.log('Histogram data:', counts);
+            chart.update();
+            
+            // Calculate and display mean
+            if (scores.length) {
+                const sum = scores.reduce((a, b) => Number(a) + Number(b), 0);
+                const mean = Math.round(sum / scores.length);
+                console.log(`Calculated mean: ${mean} from sum: ${sum} and count: ${scores.length}`);
+                meanEl.textContent = `Mean WHO-5: ${mean}`;
+                meanValueEl.textContent = mean;
+            } else {
+                meanEl.textContent = 'No data yet';
+                meanValueEl.textContent = '-';
+            }
+            
+            // Update total count
+            nEl.textContent = scores.length;
+        },
+        error => {
+            console.error("Error in Firebase onValue listener:", error);
+            showStatus("Error loading data: " + error.message, true);
+        }
+    );
 } catch (error) {
-  logDebug('Error setting up Firebase:', error);
-  const errorDiv = document.createElement('div');
-  errorDiv.className = 'error';
-  errorDiv.textContent = `Error setting up Firebase: ${error.message}`;
-  document.body.appendChild(errorDiv);
+    console.error("Error setting up Firebase:", error);
+    showStatus("Error setting up Firebase: " + error.message, true);
 }
 </script>
 </body>
