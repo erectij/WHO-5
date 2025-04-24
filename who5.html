@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>WHO-5</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+<style>
+.score{font-size:1.4rem;font-weight:700}
+.choice-button.selected{outline:2px solid #000}
+</style>
+<!-- Chart.js not needed here -->
+<!-- Firebase SDK -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
+import { getDatabase, push, ref } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "YOUR-API-KEY",
+  authDomain: "YOUR-PROJECT.firebaseapp.com",
+  databaseURL: "https://YOUR-PROJECT.firebaseio.com",
+  projectId: "YOUR-PROJECT",
+  storageBucket: "YOUR-PROJECT.appspot.com",
+  messagingSenderId: "SENDER-ID",
+  appId: "APP-ID"
+};
+const app = initializeApp(firebaseConfig);
+const db  = getDatabase(app);
+
+window.selectChoice = (q,val,btn)=>{
+  document.getElementById(q).value=val;
+  btn.parentElement.querySelectorAll('.choice-button').forEach(b=>b.classList.remove('selected'));
+  btn.classList.add('selected');
+};
+
+window.calculateScore=(e)=>{
+ e.preventDefault();
+ const vals=[...'12345'].map(i=>document.getElementById('q'+i).value);
+ if(vals.some(v=>v==='')){alert('Please answer all five items');return;}
+ const score = vals.reduce((s,v)=>s+Number(v),0)*4;
+ document.getElementById('resultTop').textContent =
+ document.getElementById('resultBottom').textContent = `Your WHO-5 score: ${score}`;
+ push(ref(db,'scores'),score);          // store in Firebase
+};
+
+window.clearScore=()=>{
+ document.querySelectorAll('.question-input').forEach(i=>i.value='');
+ document.querySelectorAll('.choice-button').forEach(b=>b.classList.remove('selected'));
+ document.getElementById('resultTop').textContent=document.getElementById('resultBottom').textContent='';
+};
+</script>
+</head>
+<body class="container">
+<header><h1>WHO-5 Well-Being Index</h1></header>
+
+<nav><button onclick="calculateScore(event)">Submit</button><button onclick="clearScore()">Clear</button><p id="resultTop" class="score"></p></nav>
+
+<p>Over the last two weeks&hellip;</p>
+
+<!-- Five question blocks -->
+<script>
+const labels=[
+ 'I have felt cheerful and in good spirits',
+ 'I have felt calm and relaxed',
+ 'I have felt active and vigorous',
+ 'I woke up feeling fresh and rested',
+ 'My daily life has been filled with things that interest me'
+];
+labels.forEach((txt,i)=>{
+ document.write(`
+  <section>
+    <h3>${txt}</h3>
+    <input type="hidden" id="q${i+1}" class="question-input">
+    ${[5,4,3,2,1,0].map(v=>`<button type="button" class="choice-button" onclick="selectChoice('q${i+1}',${v},this)">${v===5?'All of the time':v===0?'At no time':({4:'Most',3:'More than half',2:'Less than half',1:'Some'}[v]+' of the time')}</button>`).join('')}
+  </section>
+ `);
+});
+</script>
+
+<p id="resultBottom" class="score"></p>
+</body>
+</html>
