@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WHO-5 Well-Being Index</title>
+    <title>Questionnaire</title>
     <style>
         body {
             font-size: 16px;
@@ -129,7 +129,7 @@
         </div>
     </div>
 
-    <h1>WHO-5 Well-Being Index</h1>
+    <h1>Questionnaire</h1>
     <form id="form">
         <p>Over the last two weeks, how often have you felt the following:</p>
         
@@ -275,7 +275,7 @@
                 console.log("Calculated score:", score);
                 
                 // Display score
-                const scoreText = `Your WHO-5 score: ${score}`;
+                const scoreText = `Your score: ${score}`;
                 document.getElementById('resultTop').textContent = scoreText;
                 document.getElementById('resultBottom').textContent = scoreText;
                 
