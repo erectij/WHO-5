@@ -466,7 +466,7 @@ try {
                 const sum = scores.reduce((a, b) => Number(a) + Number(b), 0);
                 const mean = Math.round(sum / scores.length);
                 console.log(`Calculated mean: ${mean} from sum: ${sum} and count: ${scores.length}`);
-                meanEl.textContent = `Mean WHO-5: ${mean}`;
+                meanEl.textContent = `Mean score: ${mean}`;
                 meanValueEl.textContent = mean;
             } else {
                 meanEl.textContent = 'No data yet';
