@@ -45,6 +45,10 @@
         .top-buttons button:hover {
             background-color: #005fa3;
         }
+        .top-buttons button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
         .score {
             font-size: 1.2em;
             font-weight: bold;
@@ -85,6 +89,10 @@
             font-weight: bold;
             box-shadow: 0 0 5px rgba(0,0,0,0.3);
         }
+        .choice-button:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
         .submit-buttons {
             margin-top: 20px;
             display: flex;
@@ -98,6 +106,10 @@
             color: white;
             font-weight: 600;
             cursor: pointer;
+        }
+        .submit-buttons button:disabled, .submit-buttons input[type="submit"]:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
         }
         .status {
             margin-top: 20px;
@@ -118,18 +130,29 @@
             color: #003366;
             margin-bottom: 25px;
         }
+        .previous-submission {
+            background-color: #f0f4f8;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 20px 0;
+            border: 1px solid #d0d9e5;
+        }
     </style>
 </head>
 <body>
     <div class="top-buttons">
         <div class="top-buttons-inner">
-            <button onclick="submitForm(event)">Calculate Score</button>
-            <button onclick="clearForm()">Clear Form</button>
+            <button onclick="submitForm(event)" id="calculateBtn">Calculate Score</button>
+            <button onclick="clearForm()" id="clearBtn">Clear Form</button>
             <p id="resultTop" class="score"></p>
         </div>
     </div>
 
     <h1>Questionnaire</h1>
+    <div id="previousSubmission" class="previous-submission" style="display: none;">
+        <p>You have already submitted your answers. Thank you for your participation.</p>
+        <p id="previousScore"></p>
+    </div>
     <form id="form">
         <p>Over the last two weeks, how often have you felt the following:</p>
         
@@ -199,8 +222,8 @@
         </div>
 
         <div class="submit-buttons">
-            <input type="submit" value="Submit Score" onclick="submitForm(event)">
-            <button type="button" onclick="clearForm()">Clear Form</button>
+            <input type="submit" value="Submit Score" onclick="submitForm(event)" id="submitBtn">
+            <button type="button" onclick="clearForm()" id="clearFormBtn">Clear Form</button>
         </div>
     </form>
     <p id="resultBottom" class="score"></p>
@@ -227,6 +250,46 @@
             const app = initializeApp(firebaseConfig);
             const db = getDatabase(app);
             console.log("Firebase initialized successfully");
+
+            // Check if user has already submitted
+            function checkPreviousSubmission() {
+                if (localStorage.getItem('who5Submitted') === 'true') {
+                    // User has already submitted
+                    const previousScore = localStorage.getItem('who5Score');
+                    const submissionDate = localStorage.getItem('who5SubmissionDate');
+                    
+                    // Show previous submission info
+                    document.getElementById('previousSubmission').style.display = 'block';
+                    if (previousScore) {
+                        document.getElementById('previousScore').textContent = `Your previous score was: ${previousScore}${submissionDate ? ' (submitted on ' + submissionDate + ')' : ''}`;
+                    }
+                    
+                    // Disable form
+                    disableForm();
+                    
+                    // Show status
+                    showStatus("You have already submitted your answers. Thank you for your participation.", false);
+                }
+            }
+
+            // Disable all form controls
+            function disableForm() {
+                // Disable all buttons
+                const buttons = document.getElementsByClassName('choice-button');
+                for (let btn of buttons) {
+                    btn.disabled = true;
+                    btn.style.pointerEvents = 'none';
+                }
+                
+                // Disable submit and clear buttons
+                document.getElementById('submitBtn').disabled = true;
+                document.getElementById('clearFormBtn').disabled = true;
+                document.getElementById('calculateBtn').disabled = true;
+                document.getElementById('clearBtn').disabled = true;
+            }
+
+            // Run check on page load
+            checkPreviousSubmission();
 
             // Expose functions to window so they're available to inline onclick handlers
             window.selectChoice = function(questionId, value, button) {
@@ -255,6 +318,12 @@
 
             window.submitForm = function(event) {
                 event.preventDefault();
+                
+                // Check if already submitted
+                if (localStorage.getItem('who5Submitted') === 'true') {
+                    showStatus("You have already submitted your answers. Thank you for your participation.", false);
+                    return;
+                }
                 
                 // Get values from all questions
                 const values = [1, 2, 3, 4, 5].map(i => {
@@ -287,6 +356,19 @@
                     .then(() => {
                         console.log("Successfully submitted score to Firebase:", score);
                         showStatus("Your score has been successfully submitted!", false);
+                        
+                        // Save submission status to localStorage
+                        const currentDate = new Date().toLocaleDateString();
+                        localStorage.setItem('who5Submitted', 'true');
+                        localStorage.setItem('who5Score', score);
+                        localStorage.setItem('who5SubmissionDate', currentDate);
+                        
+                        // Update UI to show this was submitted
+                        document.getElementById('previousSubmission').style.display = 'block';
+                        document.getElementById('previousScore').textContent = `Your score was: ${score} (submitted on ${currentDate})`;
+                        
+                        // Disable form after successful submission
+                        disableForm();
                     })
                     .catch((error) => {
                         console.error("Error submitting score to Firebase:", error);
